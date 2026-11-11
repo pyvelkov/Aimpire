@@ -8,6 +8,10 @@ import { agentExecutionService } from "./services/agent-execution.service.js";
 import { geminiResearchService } from "./ai/gemini-research.service.js";
 import { productExtractionService } from "./services/product-extraction.service.js";
 import { productEvaluationService } from "./services/product-evaluation.service.js";
+import {
+    unitEconomicsService,
+    unitEconomicsSchema,
+} from "./services/unit-economics.service.js";
 
 const app = Fastify({
     logger: true,
@@ -233,6 +237,27 @@ app.post("/agents/product/evaluate", async (request, reply) => {
                     : "Product evaluation failed",
         });
     }
+});
+
+app.post("/finance/calculate", async (request, reply) => {
+    const parsed = unitEconomicsSchema.safeParse(
+        request.body
+    );
+
+    if (!parsed.success) {
+        return reply.status(400).send({
+            success: false,
+            error: "Invalid financial inputs",
+            details: parsed.error.issues,
+        });
+    }
+
+    return {
+        success: true,
+        result: unitEconomicsService.calculate(
+            parsed.data
+        ),
+    };
 });
 
 const start = async () => {
