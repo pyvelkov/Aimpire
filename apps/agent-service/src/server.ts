@@ -7,6 +7,7 @@ import { CEOAgent } from "./agents/ceo/ceo.agent.js";
 import { agentExecutionService } from "./services/agent-execution.service.js";
 import { geminiResearchService } from "./ai/gemini-research.service.js";
 import { productExtractionService } from "./services/product-extraction.service.js";
+import { productEvaluationService } from "./services/product-evaluation.service.js";
 
 const app = Fastify({
     logger: true,
@@ -193,6 +194,43 @@ app.post("/agents/research/extract-products", async (request, reply) => {
                 error instanceof Error
                     ? error.message
                     : "Product extraction failed",
+        });
+    }
+});
+
+app.post("/agents/product/evaluate", async (request, reply) => {
+    const bodySchema = z.object({
+        candidate_id: z.string().uuid(),
+    });
+
+    const parsed = bodySchema.safeParse(request.body);
+
+    if (!parsed.success) {
+        return reply.status(400).send({
+            success: false,
+            error: "Invalid candidate_id",
+            details: parsed.error.issues,
+        });
+    }
+
+    try {
+        const result = await productEvaluationService.evaluate(
+            parsed.data.candidate_id
+        );
+
+        return {
+            success: true,
+            ...result,
+        };
+    } catch (error) {
+        app.log.error(error);
+
+        return reply.status(500).send({
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Product evaluation failed",
         });
     }
 });
