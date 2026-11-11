@@ -1,11 +1,15 @@
 import "dotenv/config";
 import Fastify from "fastify";
+import { z } from "zod";
 import { supabase } from "./lib/supabase.js";
 import { aiService } from "./ai/ai.service.js";
+import { CEOAgent } from "./agents/ceo/ceo.agent.js";
 
 const app = Fastify({
     logger: true,
 });
+
+const ceoAgent = new CEOAgent();
 
 app.get("/health", async () => {
     return {
@@ -67,6 +71,41 @@ app.post("/ai/test", async (request, reply) => {
         return reply.status(500).send({
             success: false,
             error: "AI generation failed",
+        });
+    }
+});
+
+app.post("/agents/ceo/plan", async (request, reply) => {
+    try {
+        const bodySchema = z.object({
+            objective: z.string().min(10).max(2000),
+        });
+
+        const parsed = bodySchema.safeParse(request.body);
+
+        if (!parsed.success) {
+            return reply.status(400).send({
+                success: false,
+                error: "Invalid objective",
+                details: parsed.error.issues,
+            });
+        }
+
+        const result = await ceoAgent.plan(
+            parsed.data.objective
+        );
+
+        return {
+            success: true,
+            agent: "ceo",
+            ...result,
+        };
+    } catch (error) {
+        app.log.error(error);
+
+        return reply.status(500).send({
+            success: false,
+            error: "CEO Agent failed to create a plan",
         });
     }
 });
