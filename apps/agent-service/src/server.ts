@@ -4,6 +4,9 @@ import { z } from "zod";
 import { supabase } from "./lib/supabase.js";
 import { aiService } from "./ai/ai.service.js";
 import { CEOAgent } from "./agents/ceo/ceo.agent.js";
+import { agentExecutionService } from "./services/agent-execution.service.js";
+import { geminiResearchService } from "./ai/gemini-research.service.js";
+import { productExtractionService } from "./services/product-extraction.service.js";
 
 const app = Fastify({
     logger: true,
@@ -106,6 +109,90 @@ app.post("/agents/ceo/plan", async (request, reply) => {
         return reply.status(500).send({
             success: false,
             error: "CEO Agent failed to create a plan",
+        });
+    }
+});
+
+app.post("/agents/research/execute-next", async (_request, reply) => {
+    try {
+        const result = await agentExecutionService.executeNext(
+            "research"
+        );
+
+        return {
+            success: true,
+            ...result,
+        };
+    } catch (error) {
+        app.log.error(error);
+
+        return reply.status(500).send({
+            success: false,
+            error: "Research Agent execution failed",
+        });
+    }
+});
+
+app.get("/ai/test-grounding", async (_request, reply) => {
+    try {
+        const result = await geminiResearchService.research(
+            "Find one recent ecommerce trend relevant to Canada in 2026. Include a source."
+        );
+
+        return {
+            success: true,
+            model: result.model,
+            sources_found: result.sources.length,
+            search_queries: result.search_queries,
+            text: result.text,
+            sources: result.sources,
+        };
+    } catch (error) {
+        app.log.error(error);
+
+        return reply.status(500).send({
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Grounding test failed",
+        });
+    }
+});
+
+app.post("/agents/research/extract-products", async (request, reply) => {
+    const bodySchema = z.object({
+        task_id: z.string().uuid(),
+    });
+
+    const parsed = bodySchema.safeParse(request.body);
+
+    if (!parsed.success) {
+        return reply.status(400).send({
+            success: false,
+            error: "Invalid task_id",
+            details: parsed.error.issues,
+        });
+    }
+
+    try {
+        const result = await productExtractionService.extract(
+            parsed.data.task_id
+        );
+
+        return {
+            success: true,
+            ...result,
+        };
+    } catch (error) {
+        app.log.error(error);
+
+        return reply.status(500).send({
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Product extraction failed",
         });
     }
 });
