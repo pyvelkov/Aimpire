@@ -24,6 +24,8 @@ import {
     supplierDiscoveryService,
     createSupplierDiscoverySchema,
 } from "./services/supplier-discovery.service.js";
+import { automatedSupplierDiscoveryService } from "./services/automated-supplier-discovery.service.js";
+import { supplierLeadExtractionService } from "./services/supplier-lead-extraction.service.js";
 
 const app = Fastify({
     logger: true,
@@ -431,6 +433,120 @@ app.get(
             return reply.status(500).send({
                 success: false,
                 error: "Failed to retrieve supplier discoveries",
+            });
+        }
+    }
+);
+
+app.post(
+    "/agents/supplier-discovery/run",
+    async (request, reply) => {
+        const parsed = z.object({
+            candidate_id: z.string().uuid(),
+        }).safeParse(request.body);
+
+        if (!parsed.success) {
+            return reply.status(400).send({
+                success: false,
+                error: "Invalid candidate ID",
+            });
+        }
+
+        try {
+            const result =
+                await automatedSupplierDiscoveryService.discover(
+                    parsed.data.candidate_id
+                );
+
+            return {
+                success: true,
+                ...result,
+            };
+        } catch (error) {
+            app.log.error(error);
+
+            return reply.status(500).send({
+                success: false,
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Supplier discovery failed",
+            });
+        }
+    }
+);
+
+app.get(
+    "/supplier-discovery/runs/:candidateId",
+    async (request, reply) => {
+        const parsed = z.object({
+            candidateId: z.string().uuid(),
+        }).safeParse(request.params);
+
+        if (!parsed.success) {
+            return reply.status(400).send({
+                success: false,
+                error: "Invalid candidate ID",
+            });
+        }
+
+        const { data, error } = await supabase
+            .from("supplier_discovery_runs")
+            .select(
+                "id, created_at, status, research_text, grounding_sources"
+            )
+            .eq("candidate_id", parsed.data.candidateId)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (error) {
+            return reply.status(500).send({
+                success: false,
+                error: "Failed to retrieve research",
+            });
+        }
+
+        return {
+            success: true,
+            run: data,
+        };
+    }
+);
+
+app.post(
+    "/agents/supplier-discovery/extract-saved",
+    async (request, reply) => {
+        const parsed = z.object({
+            run_id: z.string().uuid(),
+        }).safeParse(request.body);
+
+        if (!parsed.success) {
+            return reply.status(400).send({
+                success: false,
+                error: "Invalid run ID",
+            });
+        }
+
+        try {
+            const result =
+                await supplierLeadExtractionService.extract(
+                    parsed.data.run_id
+                );
+
+            return {
+                success: true,
+                ...result,
+            };
+        } catch (error) {
+            app.log.error(error);
+
+            return reply.status(500).send({
+                success: false,
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Supplier extraction failed",
             });
         }
     }
