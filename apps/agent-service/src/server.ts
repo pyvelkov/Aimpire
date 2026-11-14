@@ -36,6 +36,10 @@ import {
     supplierShippingQuoteService,
     shippingQuoteSchema,
 } from "./services/supplier-shipping-quote.service.js";
+import {
+    productProfitabilityAnalysisService,
+    profitabilityAnalysisSchema,
+} from "./services/product-profitability-analysis.service.js";
 
 const app = Fastify({
     logger: true,
@@ -748,6 +752,44 @@ app.get(
             return reply.status(500).send({
                 success: false,
                 error: "Failed to load shipping quotes",
+            });
+        }
+    }
+);
+
+app.post(
+    "/agents/product/analyze-profitability",
+    async (request, reply) => {
+        const parsed = profitabilityAnalysisSchema.safeParse(
+            request.body
+        );
+
+        if (!parsed.success) {
+            return reply.status(400).send({
+                success: false,
+                error: parsed.error.flatten(),
+            });
+        }
+
+        try {
+            const analysis =
+                await productProfitabilityAnalysisService.analyze(
+                    parsed.data
+                );
+
+            return {
+                success: true,
+                ...analysis,
+            };
+        } catch (error) {
+            app.log.error(error);
+
+            return reply.status(400).send({
+                success: false,
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Profitability analysis failed",
             });
         }
     }
