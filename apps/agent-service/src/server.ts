@@ -28,6 +28,14 @@ import { automatedSupplierDiscoveryService } from "./services/automated-supplier
 import { supplierLeadExtractionService } from "./services/supplier-lead-extraction.service.js";
 import { supplierListingResearchService } from "./services/supplier-listing-research.service.js";
 import { supplierListingExtractionService } from "./services/supplier-listing-extraction.service.js";
+import {
+    supplierListingVerificationService,
+    verifyListingSchema,
+} from "./services/supplier-listing-verification.service.js";
+import {
+    supplierShippingQuoteService,
+    shippingQuoteSchema,
+} from "./services/supplier-shipping-quote.service.js";
 
 const app = Fastify({
     logger: true,
@@ -627,6 +635,119 @@ app.post(
                     error instanceof Error
                         ? error.message
                         : "Listing extraction failed",
+            });
+        }
+    }
+);
+
+app.post(
+    "/supplier-listings/verify",
+    async (request, reply) => {
+        const parsed = verifyListingSchema.safeParse(
+            request.body
+        );
+
+        if (!parsed.success) {
+            return reply.status(400).send({
+                success: false,
+                error: parsed.error.flatten(),
+            });
+        }
+
+        try {
+            const verification =
+                await supplierListingVerificationService.save(
+                    parsed.data
+                );
+
+            return {
+                success: true,
+                verification,
+            };
+        } catch (error) {
+            app.log.error(error);
+
+            return reply.status(400).send({
+                success: false,
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Verification failed",
+            });
+        }
+    }
+);
+
+app.post(
+    "/supplier-shipping-quotes",
+    async (request, reply) => {
+        const parsed = shippingQuoteSchema.safeParse(
+            request.body
+        );
+
+        if (!parsed.success) {
+            return reply.status(400).send({
+                success: false,
+                error: parsed.error.flatten(),
+            });
+        }
+
+        try {
+            const result =
+                await supplierShippingQuoteService.save(
+                    parsed.data
+                );
+
+            return {
+                success: true,
+                ...result,
+            };
+        } catch (error) {
+            app.log.error(error);
+
+            return reply.status(400).send({
+                success: false,
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to save shipping quote",
+            });
+        }
+    }
+);
+
+app.get(
+    "/supplier-shipping-quotes/:verificationId",
+    async (request, reply) => {
+        const parsed = z.object({
+            verificationId: z.string().uuid(),
+        }).safeParse(request.params);
+
+        if (!parsed.success) {
+            return reply.status(400).send({
+                success: false,
+                error: "Invalid verification ID",
+            });
+        }
+
+        try {
+            const quotes =
+                await supplierShippingQuoteService
+                    .getByVerification(
+                        parsed.data.verificationId
+                    );
+
+            return {
+                success: true,
+                count: quotes.length,
+                quotes,
+            };
+        } catch (error) {
+            app.log.error(error);
+
+            return reply.status(500).send({
+                success: false,
+                error: "Failed to load shipping quotes",
             });
         }
     }
