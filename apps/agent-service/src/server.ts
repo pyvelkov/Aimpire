@@ -519,19 +519,21 @@ app.post(
     async (request, reply) => {
         const parsed = z.object({
             run_id: z.string().uuid(),
+            retry_failed: z.boolean().default(false),
         }).safeParse(request.body);
 
         if (!parsed.success) {
             return reply.status(400).send({
                 success: false,
-                error: "Invalid run ID",
+                error: "Invalid extraction request",
             });
         }
 
         try {
             const result =
                 await supplierLeadExtractionService.extract(
-                    parsed.data.run_id
+                    parsed.data.run_id,
+                    parsed.data.retry_failed
                 );
 
             return {

@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 import { supabase } from "../lib/supabase.js";
+import { supplierExtractionLockService } from "./supplier-extraction-lock.service.js";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY!,
@@ -73,8 +74,35 @@ function sourceMatchesSupplier(
 }
 
 export class SupplierLeadExtractionService {
-  async extract(runId: string) {
-    const { data: run, error } = await supabase
+  async extract(runId: string, retryFailed = false) {
+    const claim = await supplierExtractionLockService.claim(
+      runId,
+      retryFailed
+    );
+
+    if (claim.claim_status !== "claimed") {
+      const existing =
+        claim.claim_status === "cached"
+          ? await supplierExtractionLockService.getRun(runId)
+          : null;
+
+      return {
+        run_id: runId,
+        status: claim.claim_status,
+        cached: claim.claim_status === "cached",
+        extraction_result:
+          existing?.extraction_result ?? null,
+      };
+    }
+
+    if (!claim.claim_token) {
+      throw new Error("Claimed extraction has no token");
+    }
+
+    const token = claim.claim_token;
+
+    try {
+      const { data: run, error } = await supabase
       .from("supplier_discovery_runs")
       .select("*")
       .eq("id", runId)
@@ -135,7 +163,7 @@ ${run.research_text.slice(0, 16000)}
       JSON.parse(response.text ?? "{}")
     );
 
-    const saved = [];
+    const validatedLeads = [];
     const skipped = [];
 
     const { data: existing, error: existingError } =
@@ -208,67 +236,57 @@ ${run.research_text.slice(0, 16000)}
         continue;
       }
 
-      const { data, error: insertError } =
-        await supabase
-          .from("supplier_discoveries")
-          .insert({
-            candidate_id: run.candidate_id,
-            supplier_name: lead.supplier_name,
-            supplier_url: lead.supplier_url,
-            product_url: lead.product_url,
-            platform: lead.platform,
-            evidence_url: matchingSource.url,
-            evidence_notes: lead.evidence_notes,
-            discovery_method: "gemini_google_search",
-            verification_status: "unverified",
-          })
-          .select()
-          .single();
-
-      if (insertError) {
-        if (insertError.code === "23505") {
-          skipped.push({
-            supplier: lead.supplier_name,
-            reason: "Duplicate supplier discovery",
-          });
-          continue;
-        }
-
-        throw new Error(insertError.message);
-      }
-
-      saved.push(data);
+      validatedLeads.push({
+        supplier_name: lead.supplier_name,
+        supplier_url: lead.supplier_url,
+        product_url: lead.product_url,
+        platform: lead.platform,
+        evidence_url: matchingSource.url,
+        evidence_notes: lead.evidence_notes,
+      });
 
       if (lead.product_url === null) {
         knownSuppliers.add(normalizedSupplier);
       }
     }
 
-    const extractionResult = {
-      extracted_count: parsed.suppliers.length,
-      saved_count: saved.length,
-      skipped_count: skipped.length,
-      skipped,
-      extracted_at: new Date().toISOString(),
-    };
+    const { data: completion, error: completionError } =
+      await supabase.rpc("complete_supplier_extraction", {
+        p_run_id: runId,
+        p_token: token,
+        p_leads: validatedLeads,
+        p_result: {
+          extracted_count: parsed.suppliers.length,
+          skipped_count: skipped.length,
+          skipped,
+          extracted_at: new Date().toISOString(),
+        },
+      });
 
-    const { error: updateError } = await supabase
-      .from("supplier_discovery_runs")
-      .update({
-        extraction_result: extractionResult,
-        status: "extracted",
-      })
-      .eq("id", runId);
-
-    if (updateError) {
-      throw new Error(updateError.message);
+    if (completionError) {
+      throw new Error(completionError.message);
     }
 
     return {
       run_id: runId,
-      ...extractionResult,
-      saved,
+      cached: false,
+      ...completion,
     };
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unknown extraction error";
+
+      await supplierExtractionLockService.finish(
+        runId,
+        token,
+        null,
+        message
+      );
+
+      throw error;
+    }
   }
 }
 
