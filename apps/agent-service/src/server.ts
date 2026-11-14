@@ -26,6 +26,8 @@ import {
 } from "./services/supplier-discovery.service.js";
 import { automatedSupplierDiscoveryService } from "./services/automated-supplier-discovery.service.js";
 import { supplierLeadExtractionService } from "./services/supplier-lead-extraction.service.js";
+import { supplierListingResearchService } from "./services/supplier-listing-research.service.js";
+import { supplierListingExtractionService } from "./services/supplier-listing-extraction.service.js";
 
 const app = Fastify({
     logger: true,
@@ -549,6 +551,82 @@ app.post(
                     error instanceof Error
                         ? error.message
                         : "Supplier extraction failed",
+            });
+        }
+    }
+);
+
+app.post(
+    "/agents/supplier-listings/research",
+    async (request, reply) => {
+        const parsed = z.object({
+            discovery_id: z.string().uuid(),
+        }).safeParse(request.body);
+
+        if (!parsed.success) {
+            return reply.status(400).send({
+                success: false,
+                error: "Invalid supplier discovery ID",
+            });
+        }
+
+        try {
+            const result =
+                await supplierListingResearchService.research(
+                    parsed.data.discovery_id
+                );
+
+            return {
+                success: true,
+                ...result,
+            };
+        } catch (error) {
+            app.log.error(error);
+
+            return reply.status(500).send({
+                success: false,
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Product listing research failed",
+            });
+        }
+    }
+);
+
+app.post(
+    "/agents/supplier-listings/extract",
+    async (request, reply) => {
+        const parsed = z.object({
+            run_id: z.string().uuid(),
+        }).safeParse(request.body);
+
+        if (!parsed.success) {
+            return reply.status(400).send({
+                success: false,
+                error: "Invalid research run ID",
+            });
+        }
+
+        try {
+            const result =
+                await supplierListingExtractionService.extract(
+                    parsed.data.run_id
+                );
+
+            return {
+                success: true,
+                ...result,
+            };
+        } catch (error) {
+            app.log.error(error);
+
+            return reply.status(500).send({
+                success: false,
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Listing extraction failed",
             });
         }
     }
