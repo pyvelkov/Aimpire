@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { DashboardAccessError } from "./errors";
+import { DashboardAccessError, DashboardNotFoundError } from "./errors";
 import {
   dashboardRequestUrl,
   requestDashboardResource,
@@ -66,5 +66,25 @@ describe("dashboard data access", () => {
       ok: true,
       children: [{ name: "Bowl" }],
     });
+  });
+
+  it("requests one product by id and turns a missing record into not found", async () => {
+    const id = "73e6e4bd-41d8-497f-9c65-5a5d249ce329";
+    const url = dashboardRequestUrl("http://127.0.0.1:3000", `products/${id}`);
+    assert.equal(url, `http://127.0.0.1:3000/dashboard/products/${id}`);
+    assert.equal(url.includes(SECRET), false);
+
+    await assert.rejects(
+      () => requestDashboardResource(`products/${id}`, {
+        baseUrl: "http://127.0.0.1:3000",
+        secret: SECRET,
+        fetchImpl: async () => new Response(JSON.stringify({
+          error: "Product not found",
+          leaked: SECRET,
+        }), { status: 404 }),
+      }),
+      (error: unknown) => error instanceof DashboardNotFoundError && !String(error.message).includes(SECRET),
+    );
+    assert.throws(() => dashboardRequestUrl("http://127.0.0.1:3000", "products/not-a-uuid"));
   });
 });

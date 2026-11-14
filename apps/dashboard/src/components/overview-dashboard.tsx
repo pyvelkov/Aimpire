@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { approvalKpi, approvalText } from "@/lib/approval";
 import type { DashboardPageData } from "@/lib/dashboard-schema";
 import {
@@ -102,7 +103,11 @@ export function OverviewDashboard({ data }: { data: DashboardPageData }) {
                 <li key={decision.id} className="rounded-xl border border-line px-4 py-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <h3 className="font-medium">{decision.product_name}</h3>
+                      <h3 className="font-medium">
+                        <Link href={`/products/${decision.candidate_id}`} className="underline decoration-line underline-offset-4 hover:decoration-ink">
+                          {decision.product_name}
+                        </Link>
+                      </h3>
                       <p className="mt-1 text-sm text-muted">
                         {formatMarkets(decision.target_market)} · Score {formatScore(decision.decision_score)}
                       </p>
@@ -167,7 +172,11 @@ export function OverviewDashboard({ data }: { data: DashboardPageData }) {
               <tbody>
                 {data.candidates.map((candidate) => (
                   <tr key={candidate.id} className="border-b border-line last:border-b-0">
-                    <td className="py-3 pr-3 font-medium">{candidate.name}</td>
+                    <td className="py-3 pr-3 font-medium">
+                      <Link href={`/products/${candidate.id}`} className="underline decoration-line underline-offset-4 hover:decoration-ink">
+                        {candidate.name}
+                      </Link>
+                    </td>
                     <td className="py-3 pr-3">{candidate.category || "—"}</td>
                     <td className="py-3 pr-3">{formatMarkets(candidate.target_market)}</td>
                     <td className="py-3 pr-3">{formatLabel(candidate.status)}</td>

@@ -1,4 +1,4 @@
-import { DashboardAccessError, DashboardUpstreamError } from "./errors";
+import { DashboardAccessError, DashboardNotFoundError, DashboardUpstreamError } from "./errors";
 import { isDashboardResource } from "./dashboard-resources";
 import { stripSensitive } from "./sensitive";
 
@@ -21,6 +21,10 @@ export async function handleDashboardRequest(input: {
   } catch (error) {
     if (error instanceof DashboardAccessError) {
       return { status: error.status, body: { error: error.message } };
+    }
+
+    if (error instanceof DashboardNotFoundError) {
+      return { status: error.status, body: { error: "Record not found" } };
     }
 
     if (error instanceof DashboardUpstreamError) {

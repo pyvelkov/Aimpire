@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { DashboardAccessError, DashboardUpstreamError } from "./errors";
+import { DashboardAccessError, DashboardNotFoundError, DashboardUpstreamError } from "./errors";
 import { handleDashboardRequest } from "./dashboard-handler";
 
 const SECRET = "handler-secret-value-0123456789";
@@ -71,5 +71,37 @@ describe("protected dashboard API", () => {
     assert.equal(failed.status, 502);
     assert.equal(JSON.stringify(failed.body).includes("sb_secret_"), false);
     assert.equal(JSON.stringify(failed.body).includes("password"), false);
+  });
+
+  it("authorizes a product detail read and hides missing records", async () => {
+    let loaded = false;
+    const denied = await handleDashboardRequest({
+      resource: "products/73e6e4bd-41d8-497f-9c65-5a5d249ce329",
+      authorize: async () => {
+        throw new DashboardAccessError(401, "Authentication required");
+      },
+      load: async () => {
+        loaded = true;
+        return { success: true };
+      },
+    });
+    const missing = await handleDashboardRequest({
+      resource: "products/73e6e4bd-41d8-497f-9c65-5a5d249ce329",
+      authorize: async () => undefined,
+      load: async () => {
+        throw new DashboardNotFoundError("database password=sb_secret_hidden");
+      },
+    });
+
+    assert.equal(denied.status, 401);
+    assert.equal(loaded, false);
+    assert.equal(missing.status, 404);
+    assert.equal(JSON.stringify(missing.body).includes("sb_secret_"), false);
+    const invalid = await handleDashboardRequest({
+      resource: "products/not-a-uuid",
+      authorize: async () => undefined,
+      load: async () => ({ success: true }),
+    });
+    assert.equal(invalid.status, 404);
   });
 });

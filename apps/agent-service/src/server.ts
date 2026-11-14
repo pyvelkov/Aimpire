@@ -46,6 +46,8 @@ import { registerPrivateAccess } from "./security/private-access.js";
 import { resolveListenHost } from "./security/listen-host.js";
 import { createSupabaseDashboardReader } from "./services/dashboard-read.supabase.js";
 import { DashboardReadService } from "./services/dashboard-read.service.js";
+import { registerProductManagementRoutes } from "./routes/product-management.routes.js";
+import { ProductManagementService } from "./services/product-management.service.js";
 
 const app = Fastify({
     logger: true,
@@ -804,9 +806,14 @@ app.post(
 );
 
 registerProductDecisionRoute(app);
+const dashboardReader = createSupabaseDashboardReader();
 registerDashboardRoutes(
     app,
-    new DashboardReadService(createSupabaseDashboardReader()),
+    new DashboardReadService(dashboardReader),
+);
+registerProductManagementRoutes(
+    app,
+    new ProductManagementService(dashboardReader),
 );
 
 const start = async () => {

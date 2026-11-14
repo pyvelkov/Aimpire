@@ -13,15 +13,6 @@ function StagePage({
   );
 }
 
-export function ProductsPage() {
-  return (
-    <StagePage
-      title="Products"
-      body="Product detail pages and evidence inspection arrive in Stage 6.2. This view stays read-only and does not approve, publish, or edit products."
-    />
-  );
-}
-
 export function AgentsPage() {
   return (
     <StagePage

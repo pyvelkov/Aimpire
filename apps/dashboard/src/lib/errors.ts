@@ -16,3 +16,12 @@ export class DashboardUpstreamError extends Error {
     this.name = "DashboardUpstreamError";
   }
 }
+
+export class DashboardNotFoundError extends Error {
+  readonly status = 404;
+
+  constructor(message = "Record not found") {
+    super(message);
+    this.name = "DashboardNotFoundError";
+  }
+}

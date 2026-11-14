@@ -1,4 +1,4 @@
-import { DashboardAccessError, DashboardUpstreamError } from "./errors";
+import { DashboardAccessError, DashboardNotFoundError, DashboardUpstreamError } from "./errors";
 import { stripSensitive } from "./sensitive";
 
 export const DASHBOARD_RESOURCES = [
@@ -8,14 +8,16 @@ export const DASHBOARD_RESOURCES = [
   "agent-tasks",
   "activity",
   "profitability-analyses",
+  "products",
 ] as const;
 
 export type DashboardResource = (typeof DASHBOARD_RESOURCES)[number];
 
 const RESOURCE_SET = new Set<string>(DASHBOARD_RESOURCES);
+const PRODUCT_ID = /^products\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function isDashboardResource(resource: string): resource is DashboardResource {
-  return RESOURCE_SET.has(resource);
+export function isDashboardResource(resource: string): resource is DashboardResource | `products/${string}` {
+  return RESOURCE_SET.has(resource) || PRODUCT_ID.test(resource);
 }
 
 export function dashboardRequestUrl(baseUrl: string, resource: string): string {
@@ -62,6 +64,9 @@ export async function requestDashboardResource(
   }
 
   const payload = await response.json().catch(() => null);
+  if (response.status === 404) {
+    throw new DashboardNotFoundError("Record not found");
+  }
   const cleaned = stripSensitive(payload, [options.secret]);
 
   if (!response.ok || !cleaned || typeof cleaned !== "object") {
