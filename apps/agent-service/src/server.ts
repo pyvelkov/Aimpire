@@ -12,6 +12,14 @@ import {
     unitEconomicsService,
     unitEconomicsSchema,
 } from "./services/unit-economics.service.js";
+import {
+    supplierQuoteService,
+    createSupplierQuoteSchema,
+} from "./services/supplier-quote.service.js";
+import {
+    supplierComparisonService,
+    supplierComparisonSchema,
+} from "./services/supplier-comparison.service.js";
 
 const app = Fastify({
     logger: true,
@@ -258,6 +266,103 @@ app.post("/finance/calculate", async (request, reply) => {
             parsed.data
         ),
     };
+});
+
+app.post("/supplier-quotes", async (request, reply) => {
+    const parsed = createSupplierQuoteSchema.safeParse(
+        request.body
+    );
+
+    if (!parsed.success) {
+        return reply.status(400).send({
+            success: false,
+            error: "Invalid supplier quote",
+            details: parsed.error.issues,
+        });
+    }
+
+    try {
+        const result = await supplierQuoteService.create(
+            parsed.data
+        );
+
+        return reply.status(201).send({
+            success: true,
+            ...result,
+        });
+    } catch (error) {
+        app.log.error(error);
+
+        return reply.status(500).send({
+            success: false,
+            error: "Failed to create supplier quote",
+        });
+    }
+});
+
+app.get("/supplier-quotes/:candidateId", async (request, reply) => {
+    const params = z.object({
+        candidateId: z.string().uuid(),
+    }).safeParse(request.params);
+
+    if (!params.success) {
+        return reply.status(400).send({
+            success: false,
+            error: "Invalid candidate ID",
+        });
+    }
+
+    try {
+        const quotes = await supplierQuoteService.getByCandidate(
+            params.data.candidateId
+        );
+
+        return {
+            success: true,
+            count: quotes.length,
+            quotes,
+        };
+    } catch (error) {
+        app.log.error(error);
+
+        return reply.status(500).send({
+            success: false,
+            error: "Failed to retrieve supplier quotes",
+        });
+    }
+});
+
+app.post("/supplier-quotes/compare", async (request, reply) => {
+    const parsed = supplierComparisonSchema.safeParse(
+        request.body
+    );
+
+    if (!parsed.success) {
+        return reply.status(400).send({
+            success: false,
+            error: "Invalid comparison input",
+            details: parsed.error.issues,
+        });
+    }
+
+    try {
+        const result =
+            await supplierComparisonService.compare(
+                parsed.data
+            );
+
+        return {
+            success: true,
+            ...result,
+        };
+    } catch (error) {
+        app.log.error(error);
+
+        return reply.status(500).send({
+            success: false,
+            error: "Supplier comparison failed",
+        });
+    }
 });
 
 const start = async () => {
