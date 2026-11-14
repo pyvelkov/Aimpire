@@ -20,6 +20,10 @@ import {
     supplierComparisonService,
     supplierComparisonSchema,
 } from "./services/supplier-comparison.service.js";
+import {
+    supplierDiscoveryService,
+    createSupplierDiscoverySchema,
+} from "./services/supplier-discovery.service.js";
 
 const app = Fastify({
     logger: true,
@@ -364,6 +368,73 @@ app.post("/supplier-quotes/compare", async (request, reply) => {
         });
     }
 });
+
+app.post("/supplier-discoveries", async (request, reply) => {
+    const parsed = createSupplierDiscoverySchema.safeParse(
+        request.body
+    );
+
+    if (!parsed.success) {
+        return reply.status(400).send({
+            success: false,
+            error: "Invalid supplier discovery",
+            details: parsed.error.issues,
+        });
+    }
+
+    try {
+        const discovery =
+            await supplierDiscoveryService.create(parsed.data);
+
+        return reply.status(201).send({
+            success: true,
+            discovery,
+        });
+    } catch (error) {
+        app.log.error(error);
+
+        return reply.status(500).send({
+            success: false,
+            error: "Failed to create supplier discovery",
+        });
+    }
+});
+
+app.get(
+    "/supplier-discoveries/:candidateId",
+    async (request, reply) => {
+        const parsed = z.object({
+            candidateId: z.string().uuid(),
+        }).safeParse(request.params);
+
+        if (!parsed.success) {
+            return reply.status(400).send({
+                success: false,
+                error: "Invalid candidate ID",
+            });
+        }
+
+        try {
+            const discoveries =
+                await supplierDiscoveryService.getByCandidate(
+                    parsed.data.candidateId
+                );
+
+            return {
+                success: true,
+                count: discoveries.length,
+                discoveries,
+            };
+        } catch (error) {
+            app.log.error(error);
+
+            return reply.status(500).send({
+                success: false,
+                error: "Failed to retrieve supplier discoveries",
+            });
+        }
+    }
+);
 
 const start = async () => {
     try {
