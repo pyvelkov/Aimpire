@@ -13,15 +13,6 @@ function StagePage({
   );
 }
 
-export function AgentsPage() {
-  return (
-    <StagePage
-      title="Agents"
-      body="Agent profiles and department rooms arrive in Stage 6.4. Task execution controls are not available from this dashboard."
-    />
-  );
-}
-
 export function ApprovalsPage() {
   return (
     <StagePage

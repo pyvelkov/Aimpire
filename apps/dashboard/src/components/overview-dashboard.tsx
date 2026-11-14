@@ -9,6 +9,7 @@ import {
   formatScore,
   formatWhen,
 } from "@/lib/presentation";
+import { displayTaskStatus } from "@/lib/task-status";
 
 function Card({
   label,
@@ -202,11 +203,15 @@ export function OverviewDashboard({ data }: { data: DashboardPageData }) {
               {data.tasks.slice(0, 8).map((task) => (
                 <li key={task.id} className="flex flex-col gap-1 border-b border-line pb-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-sm font-medium">{task.title}</p>
+                    <p className="text-sm font-medium">
+                      <Link href={`/agents/tasks/${task.id}`} className="underline decoration-line underline-offset-4 hover:decoration-ink">
+                        {task.title}
+                      </Link>
+                    </p>
                     <p className="text-xs text-muted">{formatLabel(task.agent_type)}</p>
                   </div>
-                  <Pill tone={task.status === "failed" ? "clay" : task.status === "completed" ? "pine" : "neutral"}>
-                    {formatLabel(task.status)}
+                  <Pill tone={task.status === "failed" ? "clay" : task.status === "completed" || task.status === "in_progress" ? "pine" : "neutral"}>
+                    {displayTaskStatus(task.status, formatLabel(task.status))}
                   </Pill>
                 </li>
               ))}

@@ -48,6 +48,9 @@ import { createSupabaseDashboardReader } from "./services/dashboard-read.supabas
 import { DashboardReadService } from "./services/dashboard-read.service.js";
 import { registerProductManagementRoutes } from "./routes/product-management.routes.js";
 import { ProductManagementService } from "./services/product-management.service.js";
+import { registerAgentOperationsRoutes } from "./routes/agent-operations.routes.js";
+import { AgentOperationsService } from "./services/agent-operations.service.js";
+import { createSupabaseAgentOperationsDb } from "./services/agent-operations.supabase.js";
 
 const app = Fastify({
     logger: true,
@@ -814,6 +817,10 @@ registerDashboardRoutes(
 registerProductManagementRoutes(
     app,
     new ProductManagementService(dashboardReader),
+);
+registerAgentOperationsRoutes(
+    app,
+    new AgentOperationsService(createSupabaseAgentOperationsDb()),
 );
 
 const start = async () => {
