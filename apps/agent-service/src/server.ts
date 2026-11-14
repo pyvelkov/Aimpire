@@ -40,6 +40,7 @@ import {
     productProfitabilityAnalysisService,
     profitabilityAnalysisSchema,
 } from "./services/product-profitability-analysis.service.js";
+import { registerProductDecisionRoute } from "./services/product-decision.service.js";
 
 const app = Fastify({
     logger: true,
@@ -794,6 +795,8 @@ app.post(
         }
     }
 );
+
+registerProductDecisionRoute(app);
 
 const start = async () => {
     try {
