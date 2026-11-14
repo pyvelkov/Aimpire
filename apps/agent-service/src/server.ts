@@ -41,10 +41,17 @@ import {
     profitabilityAnalysisSchema,
 } from "./services/product-profitability-analysis.service.js";
 import { registerProductDecisionRoute } from "./services/product-decision.service.js";
+import { registerDashboardRoutes } from "./routes/dashboard.routes.js";
+import { registerPrivateAccess } from "./security/private-access.js";
+import { resolveListenHost } from "./security/listen-host.js";
+import { createSupabaseDashboardReader } from "./services/dashboard-read.supabase.js";
+import { DashboardReadService } from "./services/dashboard-read.service.js";
 
 const app = Fastify({
     logger: true,
 });
+
+registerPrivateAccess(app);
 
 const ceoAgent = new CEOAgent();
 
@@ -797,12 +804,16 @@ app.post(
 );
 
 registerProductDecisionRoute(app);
+registerDashboardRoutes(
+    app,
+    new DashboardReadService(createSupabaseDashboardReader()),
+);
 
 const start = async () => {
     try {
         await app.listen({
             port: Number(process.env.PORT ?? 3000),
-            host: "0.0.0.0",
+            host: resolveListenHost(),
         });
     } catch (error) {
         app.log.error(error);

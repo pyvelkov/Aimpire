@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Segoe UI", "Avenir Next", "Trebuchet MS", sans-serif;
+  --color-paper: #f3efe6;
+  --color-ink: #1c1915;
+  --color-muted: #6d645b;
+  --color-line: #e0d6c8;
+  --color-card: #fffdf8;
+  --color-pine: #0f6e56;
+  --color-pine-soft: #e5f4ef;
+  --color-clay: #8a5a12;
+  --color-clay-soft: #f8efdf;
+  --color-danger: #8d2f2f;
+  --color-danger-soft: #f8e8e4;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(15, 110, 86, 0.08), transparent 28rem),
+    var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: #d7efe6;
+}

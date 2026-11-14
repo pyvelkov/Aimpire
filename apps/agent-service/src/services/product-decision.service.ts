@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { isLoopbackAddress } from "../security/loopback.js";
 import { supabase } from "../lib/supabase.js";
 import {
   DEFAULT_DECISION_THRESHOLDS,
@@ -17,12 +18,6 @@ import {
 export const productDecisionSchema = z.object({
   sku: z.string().trim().min(2),
 });
-
-const LOCAL_IPS = new Set([
-  "127.0.0.1",
-  "::1",
-  "::ffff:127.0.0.1",
-]);
 
 export class ProductDecisionRequestError extends Error {
   readonly statusCode = 400;
@@ -80,7 +75,7 @@ type Row = Record<string, unknown>;
 export function isLocalDecisionRequest(
   ip: string | undefined | null,
 ): boolean {
-  return typeof ip === "string" && LOCAL_IPS.has(ip);
+  return isLoopbackAddress(ip);
 }
 
 export function readDecisionThresholds(

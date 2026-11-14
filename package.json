@@ -1,0 +1,11 @@
+{
+  "name": "aimpire",
+  "private": true,
+  "scripts": {
+    "dev:agent": "npm run dev --prefix apps/agent-service",
+    "dev:dashboard": "npm run dev --prefix apps/dashboard",
+    "test": "npm test --prefix apps/agent-service && npm test --prefix apps/dashboard",
+    "typecheck": "npm run typecheck --prefix apps/agent-service && npm run typecheck --prefix apps/dashboard",
+    "build": "npm run build --prefix apps/agent-service && npm run build --prefix apps/dashboard"
+  }
+}
