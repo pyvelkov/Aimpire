@@ -25,3 +25,13 @@ export class DashboardNotFoundError extends Error {
     this.name = "DashboardNotFoundError";
   }
 }
+
+export class DashboardWorkflowError extends Error {
+  readonly status: 400 | 403 | 404 | 409 | 503;
+
+  constructor(status: 400 | 403 | 404 | 409 | 503, message: string) {
+    super(message);
+    this.name = "DashboardWorkflowError";
+    this.status = status;
+  }
+}

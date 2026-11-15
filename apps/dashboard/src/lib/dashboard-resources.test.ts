@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { DashboardAccessError, DashboardNotFoundError } from "./errors";
+import { DashboardAccessError, DashboardNotFoundError, DashboardUpstreamError, DashboardWorkflowError } from "./errors";
 import {
   dashboardRequestUrl,
   requestDashboardResource,
@@ -86,5 +86,48 @@ describe("dashboard data access", () => {
       (error: unknown) => error instanceof DashboardNotFoundError && !String(error.message).includes(SECRET),
     );
     assert.throws(() => dashboardRequestUrl("http://127.0.0.1:3000", "products/not-a-uuid"));
+  });
+
+  it("shows domain review errors and hides database failures", async () => {
+    const messages: Record<string, { status: number; message: string }> = {
+      unauthorized_reviewer: { status: 403, message: "This dashboard is limited to the Aimpire owner" },
+      stale_evidence: { status: 409, message: "The supplier evidence or source decision changed. This review was not recorded." },
+      superseded_decision: { status: 409, message: "A newer decision exists for this product. Request a review of that decision." },
+      duplicate_request: { status: 409, message: "A review request already exists for this decision." },
+    };
+    for (const [code, expected] of Object.entries(messages)) {
+      await assert.rejects(
+        () => requestDashboardResource("approvals", {
+          baseUrl: "http://127.0.0.1:3000",
+          secret: SECRET,
+          method: "POST",
+          fetchImpl: async () => new Response(JSON.stringify({
+            success: false,
+            error: code,
+            detail: "column reference verification_id is ambiguous",
+          }), { status: expected.status }),
+        }),
+        (error: unknown) => error instanceof DashboardWorkflowError
+          && error.status === expected.status
+          && error.message === expected.message
+          && !error.message.includes("verification_id"),
+      );
+    }
+
+    await assert.rejects(
+      () => requestDashboardResource("approvals", {
+        baseUrl: "http://127.0.0.1:3000",
+        secret: SECRET,
+        method: "POST",
+        fetchImpl: async () => new Response(JSON.stringify({
+          success: false,
+          error: "Failed to load dashboard data",
+          detail: "column reference verification_id is ambiguous sb_secret_hidden",
+        }), { status: 500 }),
+      }),
+      (error: unknown) => error instanceof DashboardUpstreamError
+        && !error.message.includes("verification_id")
+        && !error.message.includes("sb_secret_"),
+    );
   });
 });

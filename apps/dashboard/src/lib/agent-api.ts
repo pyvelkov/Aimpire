@@ -7,6 +7,9 @@ export async function loadDashboardResource(
   options?: {
     authenticated?: boolean;
     query?: Record<string, string | undefined>;
+    method?: "GET" | "POST";
+    body?: unknown;
+    actorId?: string;
   },
 ): Promise<unknown> {
   if (!options?.authenticated) {
@@ -17,5 +20,8 @@ export async function loadDashboardResource(
     baseUrl: process.env.AGENT_SERVICE_URL ?? "http://127.0.0.1:3000",
     secret: process.env.INTERNAL_API_SECRET ?? "",
     query: options?.query,
+    method: options?.method,
+    body: options?.body,
+    actorId: options?.actorId,
   });
 }

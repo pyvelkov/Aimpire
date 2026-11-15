@@ -3,6 +3,7 @@ import { approvalText } from "@/lib/approval";
 import type { ProductDetail } from "@/lib/product-schema";
 import { formatLabel, formatMarkets, formatMoney, formatPercent, formatScore, formatWhen } from "@/lib/presentation";
 import { displayEvidenceLabel } from "@/lib/shipping-evidence";
+import { RequestReviewForm } from "@/components/request-review-form";
 
 function Section({
   title,
@@ -107,6 +108,7 @@ export function ProductDetailView({ detail }: { detail: ProductDetail }) {
             <EvidenceList title="Risks" items={decision.risks} />
             <EvidenceList title="Next actions" items={decision.next_actions} />
             <p className="text-muted">Saved {formatWhen(decision.created_at)}</p>
+            <RequestReviewForm decisionId={decision.id} />
           </div>
         ) : (
           <Empty>No product decision has been saved.</Empty>

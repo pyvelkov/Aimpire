@@ -1743,3 +1743,51 @@ function push(target: string[], value: string | null) {
     target.push(value);
   }
 }
+
+export function evidenceDriftReasons(
+  snapshot: DecisionEvidenceSnapshot,
+  evidence: DecisionEvidence,
+): string[] {
+  const reasons: string[] = [];
+
+  if (
+    evidence.listing.id !== snapshot.listing_id ||
+    evidence.listing.sku !== snapshot.sku ||
+    evidence.listing.candidate_id !== snapshot.candidate_id
+  ) {
+    reasons.push("Supplier listing no longer matches the decision");
+  }
+
+  if (evidence.candidate.id !== snapshot.candidate_id) {
+    reasons.push("Product candidate no longer matches the decision");
+  }
+
+  const verification = assessVerification(evidence.verifications);
+  if ((verification.record?.id ?? null) !== snapshot.verification_id) {
+    reasons.push("Supplier verification is no longer the current record");
+  }
+
+  for (const market of ["CA", "US"] as const) {
+    const live = assessMarket(evidence, verification.record, market);
+    const saved = snapshot.markets[market];
+    if ((live.quote?.id ?? null) !== saved.quote_id) {
+      reasons.push(`${market} shipping quote is no longer the current match`);
+    }
+    if ((live.analysis?.id ?? null) !== saved.analysis_id) {
+      reasons.push(`${market} profitability analysis is no longer the current match`);
+    }
+    if (
+      saved.quote_verification_status !==
+      (live.quote?.verification_status ?? null)
+    ) {
+      reasons.push(`${market} shipping verification status changed`);
+    }
+    if (saved.analysis_id) {
+      for (const reason of live.stalenessReasons) {
+        push(reasons, reason);
+      }
+    }
+  }
+
+  return reasons;
+}

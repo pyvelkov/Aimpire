@@ -51,6 +51,9 @@ import { ProductManagementService } from "./services/product-management.service.
 import { registerAgentOperationsRoutes } from "./routes/agent-operations.routes.js";
 import { AgentOperationsService } from "./services/agent-operations.service.js";
 import { createSupabaseAgentOperationsDb } from "./services/agent-operations.supabase.js";
+import { registerApprovalRoutes } from "./routes/approval-workflow.routes.js";
+import { ApprovalWorkflowService } from "./services/approval-workflow.service.js";
+import { createSupabaseApprovalDb } from "./services/approval-workflow.supabase.js";
 
 const app = Fastify({
     logger: true,
@@ -821,6 +824,10 @@ registerProductManagementRoutes(
 registerAgentOperationsRoutes(
     app,
     new AgentOperationsService(createSupabaseAgentOperationsDb()),
+);
+registerApprovalRoutes(
+    app,
+    new ApprovalWorkflowService(createSupabaseApprovalDb()),
 );
 
 const start = async () => {

@@ -13,15 +13,6 @@ function StagePage({
   );
 }
 
-export function ApprovalsPage() {
-  return (
-    <StagePage
-      title="Approvals"
-      body="Human approval workflows arrive in Stage 6.2. A recommendation of ready for review is not an approval, and this page cannot approve a product."
-    />
-  );
-}
-
 export function WorldPage() {
   return (
     <StagePage
