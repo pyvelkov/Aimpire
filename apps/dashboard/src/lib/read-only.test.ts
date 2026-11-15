@@ -14,7 +14,7 @@ function walk(directory: string): string[] {
 }
 
 describe("dashboard source boundaries", () => {
-  it("keeps secrets, signup, publishing, and Phaser out of the app", () => {
+  it("keeps secrets, signup, and publishing out of the app", () => {
     const files = walk(srcRoot).filter((path) => (
       /\.(ts|tsx|css|mjs)$/.test(path) && !path.endsWith(".test.ts")
     ));
@@ -29,8 +29,16 @@ describe("dashboard source boundaries", () => {
         offenders.push(`${relative} enables signup`);
       }
 
-      if (/phaser|shopify|publishProduct|executeNext/i.test(source)) {
+      if (/shopify|publishProduct|executeNext/i.test(source)) {
         offenders.push(`${relative} includes a later-stage action`);
+      }
+
+      const normalized = relative.replace(/^[/\\]+/, "");
+      const inAiWorld = normalized.startsWith("lib/ai-world/")
+        || normalized.startsWith("components/ai-world/");
+
+      if (/\bphaser\b/i.test(source) && !inAiWorld) {
+        offenders.push(`${relative} imports Phaser outside AI World`);
       }
 
       if (/SUPABASE_SECRET_KEY|NEXT_PUBLIC_.*SECRET|service_role/.test(source)) {

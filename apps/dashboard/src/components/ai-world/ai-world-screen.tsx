@@ -1,0 +1,18 @@
+import { AiWorldCanvas } from "@/components/ai-world/ai-world-canvas";
+import { AiWorldLegend } from "@/components/ai-world/ai-world-legend";
+
+export function AiWorldScreen() {
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">AI World</h2>
+        <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
+          A top-down view of headquarters. Scroll to zoom and drag to look through the six departments.
+          Characters stay in a visual idle pose until a later stage connects real task state.
+        </p>
+      </div>
+      <AiWorldCanvas />
+      <AiWorldLegend />
+    </div>
+  );
+}

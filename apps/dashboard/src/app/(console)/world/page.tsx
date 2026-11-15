@@ -1,5 +1,5 @@
-import { WorldPage } from "@/components/stage-page";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return <WorldPage />;
+export default function WorldPage() {
+  redirect("/ai-world");
 }

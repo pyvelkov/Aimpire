@@ -8,7 +8,7 @@ const links = [
   { href: "/products", label: "Products" },
   { href: "/agents", label: "Agents" },
   { href: "/approvals", label: "Approvals" },
-  { href: "/world", label: "AI World" },
+  { href: "/ai-world", label: "AI World" },
 ];
 
 export function ConsoleNav() {

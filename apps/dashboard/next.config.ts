@@ -1,7 +1,15 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...(config.resolve.alias ?? {}),
+      phaser: path.join(process.cwd(), "node_modules/phaser/dist/phaser.min.js"),
+    };
+    return config;
+  },
   async headers() {
     return [
       {
