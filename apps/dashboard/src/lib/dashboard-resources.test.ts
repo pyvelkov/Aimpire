@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { DashboardAccessError, DashboardNotFoundError, DashboardUpstreamError, DashboardWorkflowError } from "./errors";
 import {
   dashboardRequestUrl,
+  isDashboardResource,
   requestDashboardResource,
 } from "./dashboard-resources";
 import { stripSensitive } from "./sensitive";
@@ -128,6 +129,14 @@ describe("dashboard data access", () => {
       (error: unknown) => error instanceof DashboardUpstreamError
         && !error.message.includes("verification_id")
         && !error.message.includes("sb_secret_"),
+    );
+  });
+
+  it("does not route scheduler status through the public dashboard", () => {
+    assert.equal(isDashboardResource("scheduler"), false);
+    assert.throws(
+      () => dashboardRequestUrl("http://127.0.0.1:3000", "scheduler"),
+      (error: unknown) => error instanceof DashboardUpstreamError,
     );
   });
 });

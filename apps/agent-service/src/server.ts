@@ -60,6 +60,8 @@ import { createSupabaseAgentProfileDb } from "./services/agent-profile.supabase.
 import { registerApprovalRoutes } from "./routes/approval-workflow.routes.js";
 import { ApprovalWorkflowService } from "./services/approval-workflow.service.js";
 import { createSupabaseApprovalDb } from "./services/approval-workflow.supabase.js";
+import { registerSchedulerRoutes } from "./routes/task-scheduler.routes.js";
+import { createAgentScheduler } from "./services/task-scheduler.supabase.js";
 
 const app = Fastify({
     logger: true,
@@ -843,12 +845,28 @@ registerApprovalRoutes(
     app,
     new ApprovalWorkflowService(createSupabaseApprovalDb()),
 );
+const scheduler = createAgentScheduler({
+    info(fields) {
+        app.log.info(fields);
+    },
+    warn(fields) {
+        app.log.warn(fields);
+    },
+});
+registerSchedulerRoutes(app, scheduler);
+app.addHook("onClose", async () => {
+    await scheduler.stop();
+});
 
 const start = async () => {
     try {
+        scheduler.start();
         await app.listen({
             port: Number(process.env.PORT ?? 3000),
             host: resolveListenHost(),
+        });
+        void scheduler.runDryRun().catch((error) => {
+            app.log.error(error);
         });
     } catch (error) {
         app.log.error(error);
