@@ -1,9 +1,7 @@
 /**
  * Visual model for the headquarters map.
- *
- * Stage 6.3.2 can pass real agent identities through `AiWorldOptions.roster`.
- * That roster is names and ids only. Task progress, execution, scheduling,
- * and approvals stay outside this view until a later stage feeds live state.
+ * Live task counts arrive through `AiWorldLiveSnapshot` and update the
+ * existing scene. They are not a roster of invented activity.
  */
 
 export const DEPARTMENT_IDS = [
@@ -64,8 +62,26 @@ export type VisualAgent = {
   character: CharacterSpec;
 };
 
+export type AiWorldLiveDepartment = {
+  department_id: DepartmentId;
+  queued: number;
+  running: number;
+  completed: number;
+  failed: number;
+  current_task: { id: string; title: string } | null;
+  latest_task: { id: string; title: string; status: string; at: string } | null;
+};
+
+export type AiWorldLiveSnapshot = {
+  server_time: string;
+  pending_product_reviews: number;
+  departments: readonly AiWorldLiveDepartment[];
+};
+
 export type AiWorldHandle = {
   resetCamera: () => void;
   resize: () => void;
   destroy: () => void;
+  applyState: (snapshot: AiWorldLiveSnapshot | null) => void;
+  setSelectListener: (listener: ((departmentId: DepartmentId | null) => void) | null) => void;
 };

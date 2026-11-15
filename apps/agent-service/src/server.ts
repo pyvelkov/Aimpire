@@ -51,6 +51,9 @@ import { ProductManagementService } from "./services/product-management.service.
 import { registerAgentOperationsRoutes } from "./routes/agent-operations.routes.js";
 import { AgentOperationsService } from "./services/agent-operations.service.js";
 import { createSupabaseAgentOperationsDb } from "./services/agent-operations.supabase.js";
+import { registerAiWorldStateRoutes } from "./routes/ai-world-state.routes.js";
+import { AiWorldStateService } from "./services/ai-world-state.service.js";
+import { createSupabaseAiWorldStateDb } from "./services/ai-world-state.supabase.js";
 import { registerApprovalRoutes } from "./routes/approval-workflow.routes.js";
 import { ApprovalWorkflowService } from "./services/approval-workflow.service.js";
 import { createSupabaseApprovalDb } from "./services/approval-workflow.supabase.js";
@@ -824,6 +827,10 @@ registerProductManagementRoutes(
 registerAgentOperationsRoutes(
     app,
     new AgentOperationsService(createSupabaseAgentOperationsDb()),
+);
+registerAiWorldStateRoutes(
+    app,
+    new AiWorldStateService(createSupabaseAiWorldStateDb()),
 );
 registerApprovalRoutes(
     app,

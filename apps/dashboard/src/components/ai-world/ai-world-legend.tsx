@@ -5,8 +5,9 @@ export function AiWorldLegend() {
     <section aria-label="Department legend" className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-line sm:p-5">
       <h3 className="text-lg font-semibold tracking-tight">Departments</h3>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-        Each room has one character with a looping idle pose. The pose is decoration for the map.
-        It does not mean an agent is researching, publishing, purchasing, scheduling, or finishing work.
+        A queued mark is pending work. A faster pose appears only while a task is in progress.
+        A warning is a failed task. “Done” appears only when a task finishes while this page is open.
+        Nothing here starts, retries, or completes work.
       </p>
       <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {DEPARTMENTS.map((department) => (

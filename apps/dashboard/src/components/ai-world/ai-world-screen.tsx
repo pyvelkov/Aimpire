@@ -7,8 +7,8 @@ export function AiWorldScreen() {
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">AI World</h2>
         <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-          A top-down view of headquarters. Scroll to zoom and drag to look through the six departments.
-          Characters stay in a visual idle pose until a later stage connects real task state.
+          A top-down view of headquarters. Characters stay idle unless a saved task is actually in progress.
+          Scroll to zoom and drag to look around. Click a character for that department&apos;s task counts.
         </p>
       </div>
       <AiWorldCanvas />

@@ -1,6 +1,6 @@
 import Phaser from "phaser";
-import { OfficeScene, RESET_EVENT } from "./office-scene";
-import type { AiWorldHandle, AiWorldOptions } from "./types";
+import { OfficeScene, RESET_EVENT, SELECT_EVENT, STATE_EVENT } from "./office-scene";
+import type { AiWorldHandle, AiWorldLiveSnapshot, AiWorldOptions, DepartmentId } from "./types";
 
 export async function startAiWorld(
   parent: HTMLElement,
@@ -49,6 +49,11 @@ export async function startAiWorld(
   });
 
   let destroyed = false;
+  let selectListener: ((departmentId: DepartmentId | null) => void) | null = null;
+  const onSelect = (departmentId: DepartmentId | null) => {
+    selectListener?.(departmentId);
+  };
+  game.events.on(SELECT_EVENT, onSelect);
 
   const destroy = () => {
     if (destroyed) {
@@ -56,6 +61,8 @@ export async function startAiWorld(
     }
 
     destroyed = true;
+    selectListener = null;
+    game.events.off(SELECT_EVENT, onSelect);
 
     try {
       game.destroy(true);
@@ -83,6 +90,14 @@ export async function startAiWorld(
       if (nextWidth > 0 && nextHeight > 0) {
         game.scale.setParentSize(nextWidth, nextHeight);
       }
+    },
+    applyState(snapshot: AiWorldLiveSnapshot | null) {
+      if (!destroyed) {
+        game.events.emit(STATE_EVENT, snapshot);
+      }
+    },
+    setSelectListener(listener) {
+      selectListener = listener;
     },
     destroy,
   };

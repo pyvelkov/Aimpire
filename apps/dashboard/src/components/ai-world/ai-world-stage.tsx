@@ -2,17 +2,26 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createGameLifecycle } from "@/lib/ai-world/lifecycle";
-import type { AiWorldHandle, AiWorldOptions } from "@/lib/ai-world/types";
+import type {
+  AiWorldHandle,
+  AiWorldLiveSnapshot,
+  AiWorldOptions,
+  DepartmentId,
+} from "@/lib/ai-world/types";
 
 type AiWorldStageProps = {
   options?: AiWorldOptions;
+  snapshot?: AiWorldLiveSnapshot | null;
+  onSelect?: (departmentId: DepartmentId | null) => void;
 };
 
-export function AiWorldStage({ options }: AiWorldStageProps) {
+export function AiWorldStage({ options, snapshot = null, onSelect }: AiWorldStageProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<AiWorldHandle | null>(null);
+  const onSelectRef = useRef(onSelect);
   const [ready, setReady] = useState(false);
   const optionsKey = JSON.stringify(options ?? null);
+  onSelectRef.current = onSelect;
 
   useEffect(() => {
     const parent = parentRef.current;
@@ -60,8 +69,25 @@ export function AiWorldStage({ options }: AiWorldStageProps) {
     };
   }, [optionsKey]);
 
+  useEffect(() => {
+    if (!ready) {
+      return;
+    }
+    handleRef.current?.setSelectListener((departmentId) => {
+      onSelectRef.current?.(departmentId);
+    });
+    return () => handleRef.current?.setSelectListener(null);
+  }, [ready]);
+
+  useEffect(() => {
+    if (!ready) {
+      return;
+    }
+    handleRef.current?.applyState(snapshot);
+  }, [ready, snapshot]);
+
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0 z-0">
       <div
         ref={parentRef}
         role="application"

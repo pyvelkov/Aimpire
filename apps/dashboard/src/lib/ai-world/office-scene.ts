@@ -8,13 +8,40 @@ import {
 } from "./camera";
 import { pixelBufferToCanvas } from "./canvas-texture";
 import { paintOffice } from "./paint-office";
-import type { AiWorldOptions } from "./types";
+import { characterPace, completionNotices } from "./presence";
+import {
+  characterBounds,
+  containsPoint,
+  pointerDistance,
+  shouldSelectCharacter,
+} from "./pointer";
+import type { AiWorldLiveDepartment, AiWorldLiveSnapshot, AiWorldOptions, DepartmentId } from "./types";
 
 const RESET_EVENT = "ai-world-reset-camera";
+const STATE_EVENT = "ai-world-state";
+const SELECT_EVENT = "ai-world-select";
+
+type Pace = "still" | "working" | "idle";
+
+type Actor = {
+  departmentId: DepartmentId;
+  sprite: Phaser.GameObjects.Image;
+  feetX: number;
+  feetY: number;
+  pace: Pace;
+  queueBadge: Phaser.GameObjects.Text;
+  failedBadge: Phaser.GameObjects.Text;
+  notice: Phaser.GameObjects.Text;
+  noticeTimer: Phaser.Time.TimerEvent | null;
+};
 
 export class OfficeScene extends Phaser.Scene {
   private options: AiWorldOptions = {};
   private dragging = false;
+  private press: { x: number; y: number } | null = null;
+  private reduceMotion = false;
+  private actors: Actor[] = [];
+  private previousDepartments: readonly AiWorldLiveDepartment[] | null = null;
 
   constructor() {
     super({ key: "office" });
@@ -30,8 +57,7 @@ export class OfficeScene extends Phaser.Scene {
     const office = paintOffice(this.options);
     this.addNearestTexture("office-floor", office.background);
     this.add.image(0, 0, "office-floor").setOrigin(0, 0);
-
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    this.reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     office.characters.forEach((character, index) => {
       const idleKey = `${character.visualId}-idle`;
@@ -41,19 +67,24 @@ export class OfficeScene extends Phaser.Scene {
 
       const sprite = this.add.image(character.x, character.y, idleKey).setOrigin(0.5, 1);
       sprite.setDepth(10);
+      sprite.setInteractive({ useHandCursor: true });
+      const actor: Actor = {
+        departmentId: character.departmentId,
+        sprite,
+        feetX: character.x,
+        feetY: character.y,
+        pace: "still",
+        queueBadge: this.badge(character.x + 28, character.y - 33, "#d7e4f5"),
+        failedBadge: this.badge(character.x - 28, character.y - 33, "#f0b089"),
+        notice: this.badge(character.x, character.y - 46, "#f6efe2"),
+        noticeTimer: null,
+      };
+      this.actors.push(actor);
+      this.setPace(actor, this.reduceMotion ? "still" : "idle", index);
 
-      if (reduceMotion) {
+      if (this.reduceMotion) {
         return;
       }
-
-      this.tweens.add({
-        targets: sprite,
-        y: character.y - 1,
-        duration: 1100 + index * 90,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
 
       this.time.addEvent({
         delay: 1900 + index * 240,
@@ -85,7 +116,67 @@ export class OfficeScene extends Phaser.Scene {
     this.input.on(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove);
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize);
     this.game.events.on(RESET_EVENT, this.onReset);
+    this.game.events.on(STATE_EVENT, this.onState);
   }
+
+  private badge(x: number, y: number, color: string) {
+    return this.add.text(x, y, "", {
+      fontFamily: "Courier New, monospace",
+      fontSize: "8px",
+      color,
+      backgroundColor: "#1c1915",
+      padding: { x: 2, y: 1 },
+    }).setOrigin(0.5, 0.5).setDepth(20).setVisible(false);
+  }
+
+  private setPace(actor: Actor, pace: Pace, index: number) {
+    if (actor.pace === pace) {
+      return;
+    }
+    actor.pace = pace;
+    this.tweens.killTweensOf(actor.sprite);
+    actor.sprite.y = actor.feetY;
+    if (pace === "still") {
+      return;
+    }
+    this.tweens.add({
+      targets: actor.sprite,
+      y: actor.feetY - (pace === "working" ? 2 : 1),
+      duration: (pace === "working" ? 380 : 1100) + index * 40,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+  }
+
+  private showNotice(actor: Actor, label: string) {
+    actor.notice.setText(label).setVisible(true);
+    actor.noticeTimer?.remove(false);
+    actor.noticeTimer = this.time.delayedCall(4000, () => {
+      if (actor.notice.active) {
+        actor.notice.setVisible(false);
+      }
+    });
+  }
+
+  private readonly onState = (snapshot: AiWorldLiveSnapshot | null) => {
+    const departments = snapshot?.departments ?? null;
+    const notices = completionNotices(this.previousDepartments, departments ?? []);
+    this.previousDepartments = departments;
+
+    this.actors.forEach((actor, index) => {
+      const department = departments?.find((entry) => entry.department_id === actor.departmentId) ?? null;
+      this.setPace(actor, characterPace(department, this.reduceMotion), index);
+      const queued = department?.queued ?? 0;
+      const failed = department?.failed ?? 0;
+      actor.queueBadge.setText(queued > 9 ? "9+" : String(queued)).setVisible(queued > 0);
+      actor.failedBadge.setText("!").setVisible(failed > 0);
+      const notice = notices.find((entry) => entry.departmentId === actor.departmentId);
+      if (notice) {
+        this.showNotice(actor, notice.label);
+      }
+    });
+  };
 
   private addNearestTexture(key: string, buffer: Parameters<typeof pixelBufferToCanvas>[0]) {
     const texture = this.textures.addCanvas(key, pixelBufferToCanvas(buffer));
@@ -127,13 +218,25 @@ export class OfficeScene extends Phaser.Scene {
   };
 
   private readonly onPointerDown = (pointer: Phaser.Input.Pointer) => {
-    if (pointer.leftButtonDown()) {
-      this.dragging = true;
+    if (!pointer.leftButtonDown()) {
+      return;
     }
+    this.dragging = true;
+    this.press = { x: pointer.x, y: pointer.y };
   };
 
-  private readonly onPointerUp = () => {
+  private readonly onPointerUp = (pointer: Phaser.Input.Pointer) => {
+    const press = this.press;
+    this.press = null;
     this.dragging = false;
+    if (!press || !shouldSelectCharacter(pointerDistance(press, pointer))) {
+      return;
+    }
+    const hit = this.actors.find((actor) => containsPoint(
+      characterBounds(actor.feetX, actor.feetY),
+      { x: pointer.worldX, y: pointer.worldY },
+    ));
+    this.game.events.emit(SELECT_EVENT, hit?.departmentId ?? null);
   };
 
   private readonly onPointerMove = (pointer: Phaser.Input.Pointer) => {
@@ -180,7 +283,8 @@ export class OfficeScene extends Phaser.Scene {
     this.input.off(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove);
     this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize);
     this.game?.events.off(RESET_EVENT, this.onReset);
+    this.game?.events.off(STATE_EVENT, this.onState);
   };
 }
 
-export { RESET_EVENT };
+export { RESET_EVENT, SELECT_EVENT, STATE_EVENT };

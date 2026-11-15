@@ -11,6 +11,7 @@ export const DASHBOARD_RESOURCES = [
   "products",
   "agents",
   "approvals",
+  "ai-world/state",
 ] as const;
 
 export type DashboardResource = (typeof DASHBOARD_RESOURCES)[number];
@@ -23,7 +24,7 @@ const APPROVAL_ACTION = /^approvals\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 
 export function isDashboardResource(
   resource: string,
-): resource is DashboardResource | `products/${string}` | `agents/tasks/${string}` | `approvals/${string}` {
+): resource is DashboardResource | `products/${string}` | `agents/tasks/${string}` | `approvals/${string}` | "ai-world/state" {
   return RESOURCE_SET.has(resource)
     || PRODUCT_ID.test(resource)
     || TASK_ID.test(resource)
