@@ -4,6 +4,7 @@ import Fastify from "fastify";
 import { describe, it } from "node:test";
 import { registerPrivateAccess } from "../security/private-access.js";
 import { ProfileNotFoundError, type AgentProfileView } from "../services/agent-profile.service.js";
+import { progressionFromCompletedCount } from "../services/agent-progression.js";
 import { registerAgentProfileRoutes, type AgentProfileApi } from "./agent-profile.routes.js";
 
 const SECRET = "agent-profile-route-secret-0123456789";
@@ -31,6 +32,7 @@ function profile(): AgentProfileView {
       failed: 0,
       cancelled: 0,
     },
+    progression: progressionFromCompletedCount(0),
     current_task: null,
     recent_tasks: [],
     completed_tasks: [],

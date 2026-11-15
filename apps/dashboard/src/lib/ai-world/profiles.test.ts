@@ -14,11 +14,20 @@ import {
   profileForDepartment,
   type AgentProfile,
 } from "./profiles";
+import { progressionFromCompletedCount } from "./progression";
 
 const PROFILE_ID = "11111111-1111-4111-8111-111111111111";
 const TASK_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 function profile(overrides: Partial<AgentProfile> = {}): AgentProfile {
+  const task_counts = overrides.task_counts ?? {
+    total: 0,
+    pending: 0,
+    in_progress: 0,
+    completed: 0,
+    failed: 0,
+    cancelled: 0,
+  };
   return {
     id: PROFILE_ID,
     agent_type: "research",
@@ -30,19 +39,13 @@ function profile(overrides: Partial<AgentProfile> = {}): AgentProfile {
     avatar_id: "nova",
     created_at: "2026-11-15T12:00:00.000Z",
     updated_at: "2026-11-15T12:00:00.000Z",
-    task_counts: {
-      total: 0,
-      pending: 0,
-      in_progress: 0,
-      completed: 0,
-      failed: 0,
-      cancelled: 0,
-    },
     current_task: null,
     recent_tasks: [],
     completed_tasks: [],
     failed_tasks: [],
+    progression: progressionFromCompletedCount(task_counts.completed),
     ...overrides,
+    task_counts,
   };
 }
 
@@ -81,6 +84,11 @@ describe("agent profile records", () => {
 
     assert.equal(saved?.[0]?.completed_tasks[0]?.title, "Read the listing");
     assert.equal(saved?.[0]?.current_task?.title, "Check the shelf");
+    assert.equal(saved?.[0]?.progression.total_xp, 25);
+    assert.equal(saved?.[0]?.progression.level, 1);
+    assert.equal(saved?.[0]?.progression.xp_toward_next_level, 25);
+    assert.equal(saved?.[0]?.progression.achievements[0]?.earned, true);
+    assert.equal(saved?.[0]?.progression.achievements[1]?.earned, false);
     assert.equal(profileForDepartment(saved ?? [], "research")?.display_name, "Nova");
     assert.equal(profileForDepartment(saved ?? [], "finance"), null);
   });
@@ -101,6 +109,9 @@ describe("agent profile records", () => {
     assert.equal(parseStoredAgentProfileList({ success: true, profiles: [{ ...base, runs: [] }] }), null);
     assert.equal(parseStoredAgentProfileList({ success: true, profiles: [{ ...base, experience_points: 10 }] }), null);
     assert.equal(parseStoredAgentProfileList({ success: true, profiles: [{ ...base, level: 2 }] }), null);
+    assert.equal(parseStoredAgentProfileList({ success: true, profiles: [profile({
+      progression: { ...progressionFromCompletedCount(0), total_xp: 999 },
+    })] }), null);
     assert.equal(parseStoredAgentProfileList({ success: true, profiles: [{ ...base, department: "Finance" }] }), null);
     assert.equal(parseAgentProfileList({ profiles: [] })?.length, 0);
     assert.equal(parseAgentProfileList({
@@ -153,6 +164,7 @@ describe("agent profile records", () => {
     const stage = read("../../components/ai-world/ai-world-stage.tsx");
     const mount = read("./mount-ai-world.ts");
     const panel = read("../../components/ai-world/ai-world-profile.tsx");
+    const scene = read("./office-scene.ts");
 
     assert.match(listRoute, /assertOwnerIdentity/);
     assert.match(listRoute, /actorId: owner\.id/);
@@ -167,7 +179,11 @@ describe("agent profile records", () => {
     assert.match(live, /<AiWorldStage/);
     assert.doesNotMatch(live, /startAiWorld|new Phaser\.Game|options=\{/);
     assert.match(panel, /specialization/);
+    assert.match(panel, /role="progressbar"/);
     assert.match(panel, /\/agents\/tasks\//);
     assert.doesNotMatch(panel, /phaser|experience_points|setInterval/i);
+    assert.match(scene, /levelLabel/);
+    assert.match(scene, /progressionFromCompletedCount/);
+    assert.equal(scene.match(/new Phaser\.Game/g), null);
   });
 });

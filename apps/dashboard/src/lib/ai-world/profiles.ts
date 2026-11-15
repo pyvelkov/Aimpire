@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { departmentById } from "./departments";
+import { ACHIEVEMENT_MILESTONES, progressionFromCompletedCount } from "./progression";
 import { DEPARTMENT_IDS, type DepartmentId } from "./types";
 
 const timestamp = z.string().refine((value) => !Number.isNaN(Date.parse(value)));
@@ -15,6 +16,16 @@ const taskSchema = z.object({
   completed_at: nullableTimestamp,
   last_activity_at: nullableTimestamp,
   error_message: z.string().nullable(),
+}).strict();
+
+const achievementSchema = z.object({
+  id: z.enum(ACHIEVEMENT_MILESTONES.map((milestone) => milestone.id) as [
+    (typeof ACHIEVEMENT_MILESTONES)[number]["id"],
+    ...(typeof ACHIEVEMENT_MILESTONES)[number]["id"][],
+  ]),
+  label: z.string().min(1),
+  earned: z.boolean(),
+  required_completed: z.number().int().positive(),
 }).strict();
 
 const profileSchema = z.object({
@@ -35,6 +46,14 @@ const profileSchema = z.object({
     completed: z.number().int().nonnegative(),
     failed: z.number().int().nonnegative(),
     cancelled: z.number().int().nonnegative(),
+  }).strict(),
+  progression: z.object({
+    total_xp: z.number().int().nonnegative(),
+    level: z.number().int().positive(),
+    xp_toward_next_level: z.number().int().nonnegative(),
+    xp_required_for_next_level: z.number().int().positive(),
+    completed_task_count: z.number().int().nonnegative(),
+    achievements: z.array(achievementSchema).length(ACHIEVEMENT_MILESTONES.length),
   }).strict(),
   current_task: taskSchema.nullable(),
   recent_tasks: z.array(taskSchema).max(20),
@@ -61,6 +80,26 @@ const profileSchema = z.object({
 
   if (profile.failed_tasks.some((task) => task.status !== "failed")) {
     context.addIssue({ code: "custom", message: "Failed history contains another status" });
+  }
+
+  const expected = progressionFromCompletedCount(profile.task_counts.completed);
+  const actual = profile.progression;
+  const progressionMatches = actual.total_xp === expected.total_xp
+    && actual.level === expected.level
+    && actual.xp_toward_next_level === expected.xp_toward_next_level
+    && actual.xp_required_for_next_level === expected.xp_required_for_next_level
+    && actual.completed_task_count === expected.completed_task_count
+    && actual.achievements.length === expected.achievements.length
+    && actual.achievements.every((achievement, index) => {
+      const milestone = expected.achievements[index];
+      return milestone
+        && achievement.id === milestone.id
+        && achievement.label === milestone.label
+        && achievement.earned === milestone.earned
+        && achievement.required_completed === milestone.required_completed;
+    });
+  if (!progressionMatches) {
+    context.addIssue({ code: "custom", message: "Progression does not match completed tasks" });
   }
 });
 

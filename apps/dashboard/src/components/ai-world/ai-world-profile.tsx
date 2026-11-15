@@ -32,6 +32,41 @@ function TaskLinks({ tasks, empty }: { tasks: readonly AgentProfileTask[]; empty
   );
 }
 
+function Progression({ profile }: { profile: AgentProfile }) {
+  const progression = profile.progression;
+  const width = Math.round((progression.xp_toward_next_level / progression.xp_required_for_next_level) * 100);
+
+  return (
+    <section className="mt-3" aria-label={`Level ${progression.level}`}>
+      <div className="flex items-baseline justify-between gap-3">
+        <h4 className="font-medium">Level {progression.level}</h4>
+        <p className="text-muted">{progression.total_xp} XP</p>
+      </div>
+      <div
+        className="mt-2 h-2 overflow-hidden rounded-full bg-paper ring-1 ring-line"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={progression.xp_required_for_next_level}
+        aria-valuenow={progression.xp_toward_next_level}
+        aria-label={`${progression.xp_toward_next_level} of ${progression.xp_required_for_next_level} XP toward the next level`}
+      >
+        <div className="h-full bg-pine" style={{ width: `${width}%` }} />
+      </div>
+      <p className="mt-1 text-muted">
+        {progression.xp_toward_next_level} / {progression.xp_required_for_next_level} XP toward the next level
+      </p>
+      <p className="mt-2 text-muted">{progression.completed_task_count} completed tasks</p>
+      <ul className="mt-2 space-y-1">
+        {progression.achievements.map((achievement) => (
+          <li key={achievement.id} className={achievement.earned ? "text-ink" : "text-muted"}>
+            {achievement.earned ? "Earned" : "Not earned"} · {achievement.label}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function AiWorldProfile({
   departmentId,
   connection,
@@ -71,6 +106,7 @@ export function AiWorldProfile({
           <p className="text-muted">{profile.description}</p>
           <p className="text-muted">{profile.responsibilities}</p>
           <p className="text-xs text-muted">Sprite {profile.avatar_id}</p>
+          <Progression profile={profile} />
         </div>
       ) : (
         <p className="mt-3 text-muted">

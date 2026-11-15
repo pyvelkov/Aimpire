@@ -8,6 +8,7 @@ import {
 } from "./camera";
 import { pixelBufferToCanvas } from "./canvas-texture";
 import { paintOffice } from "./paint-office";
+import { levelLabel, progressionFromCompletedCount } from "./progression";
 import { characterPace, completionNotices } from "./presence";
 import {
   characterBounds,
@@ -31,6 +32,7 @@ type Actor = {
   pace: Pace;
   queueBadge: Phaser.GameObjects.Text;
   failedBadge: Phaser.GameObjects.Text;
+  levelLabel: Phaser.GameObjects.Text;
   notice: Phaser.GameObjects.Text;
   noticeTimer: Phaser.Time.TimerEvent | null;
 };
@@ -76,6 +78,7 @@ export class OfficeScene extends Phaser.Scene {
         pace: "still",
         queueBadge: this.badge(character.x + 28, character.y - 33, "#d7e4f5"),
         failedBadge: this.badge(character.x - 28, character.y - 33, "#f0b089"),
+        levelLabel: this.badge(character.x, character.y + 3, "#f6efe2").setOrigin(0.5, 0),
         notice: this.badge(character.x, character.y - 46, "#f6efe2"),
         noticeTimer: null,
       };
@@ -171,6 +174,12 @@ export class OfficeScene extends Phaser.Scene {
       const failed = department?.failed ?? 0;
       actor.queueBadge.setText(queued > 9 ? "9+" : String(queued)).setVisible(queued > 0);
       actor.failedBadge.setText("!").setVisible(failed > 0);
+      if (department) {
+        const progression = progressionFromCompletedCount(department.completed);
+        actor.levelLabel.setText(levelLabel(progression.level)).setVisible(true);
+      } else {
+        actor.levelLabel.setVisible(false);
+      }
       const notice = notices.find((entry) => entry.departmentId === actor.departmentId);
       if (notice) {
         this.showNotice(actor, notice.label);

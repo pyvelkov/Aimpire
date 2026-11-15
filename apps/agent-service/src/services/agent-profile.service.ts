@@ -6,6 +6,10 @@ import {
   type TaskStatusName,
 } from "./agent-operations.service.js";
 import { DashboardDataError } from "./dashboard-read.service.js";
+import {
+  progressionFromCompletedCount,
+  type AgentProgression,
+} from "./agent-progression.js";
 
 export const AGENT_PROFILE_HISTORY_DEFAULT = 8;
 export const AGENT_PROFILE_HISTORY_MAX = 20;
@@ -83,8 +87,7 @@ export type ProfileTaskView = {
 };
 
 /**
- * Identity for one department, plus task rows that already use that department.
- * Progression is not part of this view.
+ * Identity for one department, plus task rows and progression derived from them.
  */
 export type AgentProfileView = {
   id: string;
@@ -98,6 +101,7 @@ export type AgentProfileView = {
   created_at: string;
   updated_at: string;
   task_counts: ProfileTaskCounts;
+  progression: AgentProgression;
   current_task: ProfileTaskView | null;
   recent_tasks: ProfileTaskView[];
   completed_tasks: ProfileTaskView[];
@@ -355,6 +359,7 @@ export class AgentProfileService {
         failed,
         cancelled,
       },
+      progression: progressionFromCompletedCount(completed),
       current_task: currentTask && currentTask.status === "in_progress" ? currentTask : null,
       recent_tasks: recent,
       completed_tasks: completedTasks,

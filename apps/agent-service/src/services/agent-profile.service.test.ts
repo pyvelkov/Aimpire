@@ -173,6 +173,10 @@ describe("agent profile history", () => {
     assert.equal(nova?.display_name, "Nova");
     assert.equal(nova?.department, "Research");
     assert.equal(nova?.task_counts.completed, 2);
+    assert.equal(nova?.progression.total_xp, 50);
+    assert.equal(nova?.progression.level, 1);
+    assert.equal(nova?.progression.achievements[0]?.earned, true);
+    assert.equal(nova?.progression.achievements[1]?.earned, false);
     assert.equal(nova?.task_counts.in_progress, 1);
     assert.equal(nova?.task_counts.failed, 1);
     assert.equal(nova?.task_counts.total, 4);
@@ -208,8 +212,108 @@ describe("agent profile history", () => {
     assert.deepEqual(view.completed_tasks, []);
     assert.deepEqual(view.failed_tasks, []);
     assert.equal(JSON.stringify(view).includes("Working on"), false);
-    assert.equal(Object.hasOwn(view, "level"), false);
+    assert.equal(view.progression.total_xp, 0);
+    assert.equal(view.progression.level, 1);
+    assert.equal(view.progression.xp_toward_next_level, 0);
+    assert.equal(view.progression.completed_task_count, 0);
+    assert.equal(view.progression.achievements.every((achievement) => !achievement.earned), true);
     assert.equal(Object.hasOwn(view, "experience_points"), false);
+  });
+
+  it("credits older completed tasks and gives the other statuses no XP", async () => {
+    const view = await new AgentProfileService(memoryDb({
+      profiles: [profile()],
+      tasks: [
+        task({
+          id: TASK_A,
+          status: "completed",
+          title: "Old research",
+          created_at: "2024-01-01T00:00:00.000Z",
+          completed_at: "2024-02-01T00:00:00.000Z",
+        }),
+        task({
+          id: TASK_B,
+          status: "completed",
+          title: "Later research",
+          completed_at: "2026-11-01T00:00:00.000Z",
+        }),
+        task({
+          id: TASK_C,
+          status: "completed",
+          title: "Third note",
+          completed_at: "2026-11-02T00:00:00.000Z",
+        }),
+        task({
+          id: TASK_D,
+          status: "completed",
+          title: "Fourth note",
+          completed_at: "2026-11-03T00:00:00.000Z",
+        }),
+        task({
+          id: "77777777-7777-4777-8777-777777777777",
+          status: "completed",
+          title: "Fifth note",
+          completed_at: "2026-11-04T00:00:00.000Z",
+        }),
+        task({ id: FOREIGN_TASK, status: "pending", title: "Still queued" }),
+        task({
+          id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+          status: "failed",
+          title: "Failed once",
+          completed_at: "2026-11-04T00:00:00.000Z",
+        }),
+        task({
+          id: "99999999-9999-4999-8999-999999999999",
+          status: "cancelled",
+          title: "Cancelled",
+        }),
+        task({
+          id: "88888888-8888-4888-8888-888888888888",
+          status: "in_progress",
+          title: "Still running",
+          started_at: "2026-11-06T00:00:00.000Z",
+        }),
+      ],
+    })).get(RESEARCH_ID);
+
+    assert.equal(view.task_counts.completed, 5);
+    assert.equal(view.task_counts.pending, 1);
+    assert.equal(view.task_counts.failed, 1);
+    assert.equal(view.task_counts.cancelled, 1);
+    assert.equal(view.task_counts.in_progress, 1);
+    assert.equal(view.progression.total_xp, 125);
+    assert.equal(view.progression.level, 2);
+    assert.equal(view.progression.xp_toward_next_level, 25);
+    assert.equal(view.progression.achievements[0]?.earned, true);
+    assert.equal(view.progression.achievements[1]?.earned, true);
+    assert.equal(view.progression.achievements[2]?.earned, false);
+  });
+
+  it("counts a repeated completed id only once", async () => {
+    const duplicate = task({
+      id: TASK_A,
+      status: "completed",
+      title: "Only once",
+      completed_at: "2024-02-01T00:00:00.000Z",
+    });
+    const db = memoryDb({
+      profiles: [profile()],
+      tasks: [duplicate],
+      counts: { "research:completed": 1 },
+    });
+    const listTasks = db.listTasks.bind(db);
+    db.listTasks = async (agentType, status, limit) => {
+      if (status === "completed") {
+        return [duplicate, { ...duplicate }, { ...duplicate }];
+      }
+      return listTasks(agentType, status, limit);
+    };
+
+    const view = await new AgentProfileService(db).get(RESEARCH_ID);
+    assert.equal(view.task_counts.completed, 1);
+    assert.equal(view.completed_tasks.length, 1);
+    assert.equal(view.progression.total_xp, 25);
+    assert.equal(view.progression.level, 1);
   });
 
   it("does not turn a stray running row into current work when the count is zero", async () => {
