@@ -1,19 +1,24 @@
 import { OverviewDashboard } from "@/components/overview-dashboard";
+import { reviewsByDecision } from "@/lib/approval";
+import { Unavailable } from "@/components/command/chrome";
+import { loadApprovals } from "@/lib/load-approvals";
 import { loadDashboardPage } from "@/lib/load-dashboard";
 
 export const dynamic = "force-dynamic";
 
 export default async function OverviewPage() {
-  const result = await loadDashboardPage();
+  const [result, reviews] = await Promise.all([loadDashboardPage(), loadApprovals()]);
 
   if (!result.ok) {
     return (
-      <section className="rounded-2xl bg-danger-soft p-5 text-danger ring-1 ring-danger/20">
-        <h2 className="text-lg font-semibold">Dashboard data is unavailable</h2>
-        <p className="mt-2 text-sm">{result.message}</p>
-      </section>
+      <Unavailable title="Dashboard data is unavailable" message={result.message} />
     );
   }
 
-  return <OverviewDashboard data={result.data} />;
+  return (
+    <OverviewDashboard
+      data={result.data}
+      reviewsByDecision={reviews.ok ? reviewsByDecision(reviews.approvals) : {}}
+    />
+  );
 }

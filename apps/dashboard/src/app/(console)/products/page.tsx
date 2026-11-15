@@ -1,34 +1,31 @@
 import { ProductTable } from "@/components/product-table";
+import { cn } from "@/lib/utils";
+import { reviewsByDecision } from "@/lib/approval";
+import { EmptyState, PageIntro, Unavailable, surfaceClass } from "@/components/command/chrome";
+import { loadApprovals } from "@/lib/load-approvals";
 import { loadProductList } from "@/lib/load-product";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProductsPage() {
-  const result = await loadProductList();
+  const [result, reviews] = await Promise.all([loadProductList(), loadApprovals()]);
+  const reviewIndex = reviews.ok ? reviewsByDecision(reviews.approvals) : {};
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Products</h2>
-        <p className="mt-1 max-w-2xl text-sm text-muted">
-          Product candidates, supplier evidence, and saved decisions. This section is read-only.
-        </p>
-      </div>
+      <PageIntro title="Products">
+        Product candidates, supplier evidence, and saved decisions. This section is read-only. Supplier cost, retail price, and margin are on each product.
+      </PageIntro>
       {result.ok ? (
         result.products.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-line px-4 py-6 text-sm text-muted">
-            No product candidates yet.
-          </p>
+          <EmptyState>No product candidates yet.</EmptyState>
         ) : (
-          <section className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-line sm:p-5">
-            <ProductTable products={result.products} />
+          <section className={cn(surfaceClass, "p-4 sm:p-5")}>
+            <ProductTable products={result.products} reviewsByDecision={reviewIndex} />
           </section>
         )
       ) : (
-        <section className="rounded-2xl bg-danger-soft p-5 text-danger ring-1 ring-danger/20">
-          <h2 className="text-lg font-semibold">Products are unavailable</h2>
-          <p className="mt-2 text-sm">{result.message}</p>
-        </section>
+        <Unavailable title="Products are unavailable" message={result.message} />
       )}
     </div>
   );

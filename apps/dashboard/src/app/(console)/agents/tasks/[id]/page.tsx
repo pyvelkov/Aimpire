@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { AgentTaskView } from "@/components/agent-task";
+import { Unavailable } from "@/components/command/chrome";
 import { loadAgentTask } from "@/lib/load-agents";
 import { isProductId } from "@/lib/shipping-evidence";
 
@@ -19,10 +20,7 @@ export default async function AgentTaskPage({
   if (!result.ok) {
     if (result.notFound) notFound();
     return (
-      <section className="rounded-2xl bg-danger-soft p-5 text-danger ring-1 ring-danger/20">
-        <h2 className="text-lg font-semibold">Task details are unavailable</h2>
-        <p className="mt-2 text-sm">{result.message}</p>
-      </section>
+      <Unavailable title="Task details are unavailable" message={result.message} />
     );
   }
 

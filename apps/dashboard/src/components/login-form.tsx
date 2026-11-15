@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { login, type LoginState } from "@/actions/auth";
+import { fieldClass } from "@/components/command/chrome";
 
 const initialState: LoginState = { error: "" };
 
@@ -9,14 +10,14 @@ export function LoginForm({ notice }: { notice?: string }) {
   const [state, action, pending] = useActionState(login, initialState);
 
   return (
-    <form action={action} className="mt-8 space-y-4">
+    <form action={action} className="mt-8 space-y-4 rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-md">
       {notice ? (
-        <p role="status" className="rounded-xl bg-clay-soft px-3 py-2 text-sm text-clay">
+        <p role="status" className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-300">
           {notice}
         </p>
       ) : null}
       {state.error ? (
-        <p role="alert" className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
+        <p role="alert" className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
           {state.error}
         </p>
       ) : null}
@@ -28,7 +29,7 @@ export function LoginForm({ notice }: { notice?: string }) {
           type="email"
           autoComplete="username"
           required
-          className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-2 outline-none ring-pine focus:ring-2"
+          className={fieldClass}
         />
       </label>
       <label className="block text-sm font-medium" htmlFor="password">
@@ -39,13 +40,13 @@ export function LoginForm({ notice }: { notice?: string }) {
           type="password"
           autoComplete="current-password"
           required
-          className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-2 outline-none ring-pine focus:ring-2"
+          className={fieldClass}
         />
       </label>
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-xl bg-ink px-3 py-2.5 text-sm font-medium text-card disabled:opacity-60"
+        className="w-full rounded-lg bg-zinc-100 px-3 py-2.5 text-sm font-semibold text-zinc-950 hover:bg-white disabled:opacity-60"
       >
         {pending ? "Signing in" : "Sign in"}
       </button>

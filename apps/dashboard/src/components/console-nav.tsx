@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/", label: "Overview" },
@@ -11,11 +12,14 @@ const links = [
   { href: "/ai-world", label: "AI World" },
 ];
 
-export function ConsoleNav() {
+export function ConsoleNav({ orientation = "row" }: { orientation?: "row" | "column" }) {
   const pathname = usePathname();
 
   return (
-    <nav className="flex flex-wrap gap-2" aria-label="Dashboard">
+    <nav
+      className={orientation === "column" ? "flex flex-col gap-1" : "flex flex-wrap gap-1"}
+      aria-label="Dashboard"
+    >
       {links.map((link) => {
         const active = link.href === "/"
           ? pathname === "/"
@@ -26,11 +30,13 @@ export function ConsoleNav() {
             key={link.href}
             href={link.href}
             aria-current={active ? "page" : undefined}
-            className={`rounded-full px-3 py-1.5 text-sm ${
+            className={cn(
+              "rounded-lg px-3 py-2 text-sm transition-colors duration-200",
+              orientation === "column" && "w-full",
               active
-                ? "bg-ink text-card"
-                : "bg-card text-muted ring-1 ring-line hover:text-ink"
-            }`}
+                ? "border border-zinc-700/50 bg-zinc-800/80 text-white"
+                : "border border-transparent text-zinc-400 hover:text-zinc-100",
+            )}
           >
             {link.label}
           </Link>

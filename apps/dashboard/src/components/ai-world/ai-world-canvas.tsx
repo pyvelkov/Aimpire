@@ -4,8 +4,8 @@ import dynamic from "next/dynamic";
 
 function WorldLoading() {
   return (
-    <div className="grid h-[min(72vh,680px)] min-h-[420px] place-items-center rounded-2xl bg-[#1a2420] ring-1 ring-line">
-      <p className="text-sm text-[#d9d3c7]">Opening headquarters…</p>
+    <div className="grid h-[min(72vh,680px)] min-h-[420px] place-items-center rounded-xl border border-zinc-800/80 bg-[#1a2420] text-zinc-300">
+      <p className="text-sm text-zinc-300">Opening headquarters…</p>
     </div>
   );
 }

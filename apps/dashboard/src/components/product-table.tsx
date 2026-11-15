@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { approvalText } from "@/lib/approval";
+import type { DecisionReview } from "@/lib/approval";
 import type { ManagedProduct } from "@/lib/product-schema";
 import { formatLabel, formatMarkets, formatScore, formatWhen } from "@/lib/presentation";
+import { DecisionApprovalBadge, EmptyState, StatusBadge, fieldClass, metricLabelClass, surfaceClass, workflowTone } from "@/components/command/chrome";
+import { cn } from "@/lib/utils";
 
 type SortKey = "name" | "status" | "updated" | "score";
 
@@ -22,7 +24,13 @@ function sortValue(product: ManagedProduct, key: SortKey): string | number {
   return product.updated_at ?? product.created_at;
 }
 
-export function ProductTable({ products }: { products: ManagedProduct[] }) {
+export function ProductTable({
+  products,
+  reviewsByDecision,
+}: {
+  products: ManagedProduct[];
+  reviewsByDecision: Record<string, DecisionReview>;
+}) {
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("updated");
   const [direction, setDirection] = useState<"asc" | "desc">("desc");
@@ -62,72 +70,82 @@ export function ProductTable({ products }: { products: ManagedProduct[] }) {
 
   return (
     <div className="space-y-4">
-      <label className="block text-sm font-medium" htmlFor="product-search">
-        Search products
-        <input
-          id="product-search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Name, category, status, or market"
-          className="mt-1 w-full rounded-xl border border-line bg-white px-3 py-2 outline-none ring-pine focus:ring-2"
-        />
-      </label>
-      {visible.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-line px-4 py-6 text-sm text-muted">
-          No products match that search.
-        </p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[52rem] text-left text-sm">
-            <caption className="sr-only">Product candidates</caption>
-            <thead className="text-muted">
-              <tr className="border-b border-line">
-                {columns.map((column) => (
-                  <th key={column.key} className="py-2 pr-3 font-medium">
-                    <button
-                      type="button"
-                      onClick={() => chooseSort(column.key)}
-                      className="inline-flex items-center gap-1 hover:text-ink"
-                      aria-sort={sortKey === column.key ? (direction === "asc" ? "ascending" : "descending") : "none"}
-                    >
-                      {column.label}
-                      {sortKey === column.key ? (direction === "asc" ? "↑" : "↓") : ""}
-                    </button>
-                  </th>
-                ))}
-                <th className="py-2 pr-3 font-medium">Category</th>
-                <th className="py-2 pr-3 font-medium">Markets</th>
-                <th className="py-2 pr-3 font-medium">Recommendation</th>
-                <th className="py-2 font-medium">Approval</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((product) => {
-                const decision = product.latest_decision;
-                return (
-                  <tr key={product.id} className="border-b border-line last:border-b-0">
-                    <td className="py-3 pr-3 font-medium">
-                      <Link href={`/products/${product.id}`} className="underline decoration-line underline-offset-4 hover:decoration-ink">
-                        {product.name}
-                      </Link>
-                    </td>
-                    <td className="py-3 pr-3">{formatLabel(product.status)}</td>
-                    <td className="py-3 pr-3">{formatWhen(product.updated_at ?? product.created_at)}</td>
-                    <td className="py-3 pr-3">{formatScore(decision?.decision_score ?? null)}</td>
-                    <td className="py-3 pr-3">{product.category || "—"}</td>
-                    <td className="py-3 pr-3">{formatMarkets(product.target_market)}</td>
-                    <td className="py-3 pr-3">{decision?.recommendation_label ?? "No decision"}</td>
-                    <td className="py-3">
-                      {decision
-                        ? approvalText(decision.approved, decision.approval_label)
-                        : "Not approved"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <label className="block min-w-0 flex-1 text-sm font-medium" htmlFor="product-search">
+          Search products
+          <input
+            id="product-search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Name, category, status, or market"
+            className={fieldClass}
+          />
+        </label>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Sort products">
+          {columns.map((column) => (
+            <button
+              key={column.key}
+              type="button"
+              onClick={() => chooseSort(column.key)}
+              aria-sort={sortKey === column.key ? (direction === "asc" ? "ascending" : "descending") : "none"}
+              className={cn(
+                "rounded-lg px-3 py-2 text-sm transition-colors duration-200",
+                sortKey === column.key
+                  ? "border border-zinc-700/50 bg-zinc-800/80 text-white"
+                  : "border border-transparent text-zinc-400 hover:text-zinc-100",
+              )}
+            >
+              {column.label}
+              {sortKey === column.key ? (direction === "asc" ? " ↑" : " ↓") : ""}
+            </button>
+          ))}
         </div>
+      </div>
+      {visible.length === 0 ? (
+        <EmptyState>No products match that search.</EmptyState>
+      ) : (
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {visible.map((product) => {
+            const decision = product.latest_decision;
+            return (
+              <li key={product.id} className={cn(surfaceClass, "p-4")}>
+                <Link href={`/products/${product.id}`} className="block space-y-3">
+                    <div>
+                      <h3 className="font-medium text-zinc-100">{product.name}</h3>
+                      <p className="mt-1 text-sm text-zinc-400">
+                        {product.category || "No category"} · {formatMarkets(product.target_market)}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <StatusBadge tone={workflowTone(product.status)}>{formatLabel(product.status)}</StatusBadge>
+                      <StatusBadge tone={decision ? workflowTone(decision.recommendation) : "neutral"}>
+                        {decision?.recommendation_label ?? "No decision"}
+                      </StatusBadge>
+                      <DecisionApprovalBadge
+                        approved={decision?.approved ?? false}
+                        label={decision?.approval_label ?? "Not approved"}
+                        reviewStatus={decision ? reviewsByDecision[decision.id]?.status : null}
+                      />
+                    </div>
+                    <dl className="grid grid-cols-2 gap-3">
+                      <div>
+                        <dt className={metricLabelClass}>Decision score</dt>
+                        <dd className="mt-1 tabular-nums text-sm font-semibold text-zinc-100">
+                          {formatScore(decision?.decision_score ?? null)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className={metricLabelClass}>Updated</dt>
+                        <dd className="mt-1 text-sm tabular-nums text-zinc-300">
+                          {formatWhen(product.updated_at ?? product.created_at)}
+                        </dd>
+                      </div>
+                    </dl>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

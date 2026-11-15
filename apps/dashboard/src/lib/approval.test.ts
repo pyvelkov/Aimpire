@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { approvalKpi, approvalText, isDashboardOwner } from "./approval";
+import { approvalKpi, approvalText, isDashboardOwner, reviewForDecision } from "./approval";
 import { formatScore } from "./presentation";
 
 describe("single-owner authorization", () => {
@@ -28,5 +28,14 @@ describe("approval presentation", () => {
       /not counted as approved/,
     );
     assert.equal(formatScore(50), "50/100");
+  });
+
+  it("uses the approved review instead of inviting another request", () => {
+    const reviews = [
+      { id: "rejected", status: "rejected", source_decision_id: "decision", created_at: "2026-11-14T00:00:00Z" },
+      { id: "approved", status: "approved", source_decision_id: "decision", created_at: "2026-11-15T00:00:00Z" },
+    ];
+    assert.equal(reviewForDecision(reviews, "decision")?.id, "approved");
+    assert.equal(reviewForDecision(reviews, "missing"), null);
   });
 });

@@ -46,17 +46,17 @@ function AiWorldStatus({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
       <div>
-        <p className={connection.kind === "stale" ? "text-clay" : "text-muted"}>{statusCopy(connection)}</p>
+        <p className={connection.kind === "stale" ? "text-amber-400" : "text-zinc-400"}>{statusCopy(connection)}</p>
         {catalog.kind === "unavailable" ? (
-          <p className="text-clay">Character profiles are unavailable.</p>
+          <p className="text-amber-400">Character profiles are unavailable.</p>
         ) : null}
       </div>
       {snapshot ? (
-        <Link href="/approvals" className="rounded-full bg-card px-3 py-1.5 ring-1 ring-line hover:text-ink">
+        <Link href="/approvals" className="rounded-lg border border-zinc-700/50 bg-zinc-800/80 px-3 py-1.5 text-zinc-100 hover:border-zinc-600">
           Pending product reviews: {snapshot.pending_product_reviews}
         </Link>
       ) : (
-        <p className="text-muted">Pending product reviews unavailable</p>
+        <p className="text-zinc-400">Pending product reviews unavailable</p>
       )}
     </div>
   );
@@ -152,9 +152,9 @@ export function AiWorldLive() {
   return (
     <div className="space-y-3">
       <AiWorldStatus connection={connection} catalog={catalog} />
-      <div className="relative h-[min(72vh,680px)] min-h-[420px] overflow-hidden rounded-2xl bg-[#1a2420] shadow-sm ring-1 ring-line">
+      <div className="relative h-[min(72vh,680px)] min-h-[420px] overflow-hidden rounded-xl border border-zinc-800/80 bg-[#1a2420]">
         {connection.kind === "stale" ? (
-          <p className="absolute top-3 left-3 z-20 rounded-full bg-clay px-3 py-1 text-xs text-card">
+          <p className="absolute top-3 left-3 z-20 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs text-amber-300">
             Stale
           </p>
         ) : null}

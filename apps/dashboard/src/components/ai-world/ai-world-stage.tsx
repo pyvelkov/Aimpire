@@ -98,11 +98,11 @@ export function AiWorldStage({ options, snapshot = null, onSelect }: AiWorldStag
         type="button"
         onClick={() => handleRef.current?.resetCamera()}
         disabled={!ready}
-        className="absolute top-3 right-3 z-10 rounded-full bg-card px-3 py-1.5 text-sm text-ink shadow-sm ring-1 ring-line hover:bg-white disabled:opacity-50"
+        className="absolute top-3 right-3 z-10 rounded-lg border border-zinc-700/60 bg-zinc-900/80 px-3 py-1.5 text-sm text-zinc-100 backdrop-blur-md hover:border-zinc-600 disabled:opacity-50"
       >
         Reset camera
       </button>
-      <p className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-full bg-ink/70 px-3 py-1 text-xs text-card">
+      <p className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-full border border-zinc-800 bg-zinc-950/80 px-3 py-1 text-xs text-zinc-300">
         Scroll to zoom · Drag to pan
       </p>
     </div>

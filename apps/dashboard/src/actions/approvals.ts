@@ -32,8 +32,10 @@ export async function createReviewRequest(
       actorId: owner.id,
       body: { decision_id: decisionId, notes },
     });
+    revalidatePath("/");
     revalidatePath("/approvals");
     revalidatePath("/products");
+    revalidatePath("/products/[id]", "page");
     const requestId = payload && typeof payload === "object" && "approval" in payload
       ? (payload as { approval?: { id?: string } }).approval?.id
       : undefined;
@@ -59,8 +61,11 @@ export async function resolveReview(
       actorId: owner.id,
       body: { notes },
     });
+    revalidatePath("/");
     revalidatePath("/approvals");
     revalidatePath(`/approvals/${requestId}`);
+    revalidatePath("/products");
+    revalidatePath("/products/[id]", "page");
     return { error: "", done: true };
   } catch (error) {
     return failure(error);
