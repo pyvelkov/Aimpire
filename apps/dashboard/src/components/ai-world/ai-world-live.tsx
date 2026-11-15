@@ -2,14 +2,24 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { departmentById } from "@/lib/ai-world/departments";
-import { departmentActivity } from "@/lib/ai-world/presence";
+import { AiWorldProfile } from "@/components/ai-world/ai-world-profile";
 import { createAiWorldPoller, loadAiWorldSnapshot } from "@/lib/ai-world/poll";
+import {
+  loadAgentProfile,
+  loadAgentProfiles,
+  profileForDepartment,
+  type AgentProfile,
+  type AgentProfileAvailability,
+} from "@/lib/ai-world/profiles";
 import { reduceConnection, snapshotOf, type AiWorldConnection } from "@/lib/ai-world/snapshot";
 import type { DepartmentId } from "@/lib/ai-world/types";
 import { formatWhen } from "@/lib/presentation";
-import { agentsPageHref } from "@/lib/task-status";
 import { AiWorldStage } from "./ai-world-stage";
+
+type ProfileCatalog =
+  | { kind: "loading" }
+  | { kind: "ready"; profiles: AgentProfile[] }
+  | { kind: "unavailable" };
 
 function statusCopy(connection: AiWorldConnection): string {
   if (connection.kind === "loading") {
@@ -25,11 +35,22 @@ function statusCopy(connection: AiWorldConnection): string {
   return `Live · confirmed ${when}`;
 }
 
-function AiWorldStatus({ connection }: { connection: AiWorldConnection }) {
+function AiWorldStatus({
+  connection,
+  catalog,
+}: {
+  connection: AiWorldConnection;
+  catalog: ProfileCatalog;
+}) {
   const snapshot = snapshotOf(connection);
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-      <p className={connection.kind === "stale" ? "text-clay" : "text-muted"}>{statusCopy(connection)}</p>
+      <div>
+        <p className={connection.kind === "stale" ? "text-clay" : "text-muted"}>{statusCopy(connection)}</p>
+        {catalog.kind === "unavailable" ? (
+          <p className="text-clay">Character profiles are unavailable.</p>
+        ) : null}
+      </div>
       {snapshot ? (
         <Link href="/approvals" className="rounded-full bg-card px-3 py-1.5 ring-1 ring-line hover:text-ink">
           Pending product reviews: {snapshot.pending_product_reviews}
@@ -41,58 +62,12 @@ function AiWorldStatus({ connection }: { connection: AiWorldConnection }) {
   );
 }
 
-function AgentDetails({
-  departmentId,
-  connection,
-  onClose,
-}: {
-  departmentId: DepartmentId;
-  connection: AiWorldConnection;
-  onClose: () => void;
-}) {
-  const department = departmentById(departmentId);
-  const snapshot = snapshotOf(connection);
-  const state = snapshot?.departments.find((entry) => entry.department_id === departmentId) ?? null;
-  const stale = connection.kind === "stale";
-
-  return (
-    <aside className="absolute right-3 bottom-14 z-20 w-72 rounded-2xl bg-card p-4 text-sm shadow-sm ring-1 ring-line">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="font-semibold">{department.label}</h3>
-          <p className="text-muted">{department.agent.displayName}</p>
-        </div>
-        <button type="button" onClick={onClose} className="text-muted hover:text-ink">
-          Close
-        </button>
-      </div>
-      {state ? (
-        <>
-          <p className="mt-3 font-medium">{departmentActivity(state)}</p>
-          {stale ? <p className="mt-1 text-clay">These counts are not live.</p> : null}
-          <dl className="mt-3 grid grid-cols-2 gap-2 text-muted">
-            <div>Queued <span className="block text-ink">{state.queued}</span></div>
-            <div>Running <span className="block text-ink">{state.running}</span></div>
-            <div>Completed <span className="block text-ink">{state.completed}</span></div>
-            <div>Failed <span className="block text-ink">{state.failed}</span></div>
-          </dl>
-          <p className="mt-3 text-muted">
-            {state.current_task ? `Running: ${state.current_task.title}` : "No task is in progress."}
-          </p>
-        </>
-      ) : (
-        <p className="mt-3 text-muted">Task counts are not available yet.</p>
-      )}
-      <Link href={agentsPageHref({ agent: departmentId })} className="mt-3 inline-block font-medium text-pine">
-        View department tasks
-      </Link>
-    </aside>
-  );
-}
-
 export function AiWorldLive() {
   const [connection, setConnection] = useState<AiWorldConnection>({ kind: "loading" });
   const [selected, setSelected] = useState<DepartmentId | null>(null);
+  const [catalog, setCatalog] = useState<ProfileCatalog>({ kind: "loading" });
+  const [detail, setDetail] = useState<AgentProfile | null>(null);
+  const [detailState, setDetailState] = useState<AgentProfileAvailability>("loading");
 
   useEffect(() => {
     const poller = createAiWorldPoller({
@@ -105,18 +80,93 @@ export function AiWorldLive() {
     return () => poller.stop();
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    void loadAgentProfiles()
+      .then((profiles) => {
+        if (!cancelled) {
+          setCatalog({ kind: "ready", profiles });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCatalog({ kind: "unavailable" });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selected) {
+      return;
+    }
+    if (catalog.kind === "loading") {
+      setDetail(null);
+      setDetailState("loading");
+      return;
+    }
+    if (catalog.kind === "unavailable") {
+      setDetail(null);
+      setDetailState("unavailable");
+      return;
+    }
+
+    const saved = profileForDepartment(catalog.profiles, selected);
+    if (!saved) {
+      setDetail(null);
+      setDetailState("missing");
+      return;
+    }
+
+    setDetail(saved);
+    setDetailState("ready");
+    let cancelled = false;
+    void loadAgentProfile(saved.id)
+      .then((profile) => {
+        if (cancelled) {
+          return;
+        }
+        if (!profile || profile.agent_type !== selected) {
+          setDetail(null);
+          setDetailState("missing");
+          return;
+        }
+        setDetail(profile);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDetail(saved);
+          setDetailState("ready");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [catalog, selected]);
+
+  const snapshot = snapshotOf(connection);
+
   return (
     <div className="space-y-3">
-      <AiWorldStatus connection={connection} />
+      <AiWorldStatus connection={connection} catalog={catalog} />
       <div className="relative h-[min(72vh,680px)] min-h-[420px] overflow-hidden rounded-2xl bg-[#1a2420] shadow-sm ring-1 ring-line">
         {connection.kind === "stale" ? (
           <p className="absolute top-3 left-3 z-20 rounded-full bg-clay px-3 py-1 text-xs text-card">
             Stale
           </p>
         ) : null}
-        <AiWorldStage snapshot={snapshotOf(connection)} onSelect={setSelected} />
+        <AiWorldStage snapshot={snapshot} onSelect={setSelected} />
         {selected ? (
-          <AgentDetails departmentId={selected} connection={connection} onClose={() => setSelected(null)} />
+          <AiWorldProfile
+            departmentId={selected}
+            connection={connection}
+            profile={detail}
+            profileState={detailState}
+            onClose={() => setSelected(null)}
+          />
         ) : null}
       </div>
     </div>

@@ -12,6 +12,7 @@ export const DASHBOARD_RESOURCES = [
   "agents",
   "approvals",
   "ai-world/state",
+  "agent-profiles",
 ] as const;
 
 export type DashboardResource = (typeof DASHBOARD_RESOURCES)[number];
@@ -21,16 +22,18 @@ const PRODUCT_ID = /^products\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[
 const TASK_ID = /^agents\/tasks\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const APPROVAL_ID = /^approvals\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const APPROVAL_ACTION = /^approvals\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(approve|reject)$/i;
+const PROFILE_ID = /^agent-profiles\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function isDashboardResource(
   resource: string,
-): resource is DashboardResource | `products/${string}` | `agents/tasks/${string}` | `approvals/${string}` | "ai-world/state" {
+): resource is DashboardResource | `products/${string}` | `agents/tasks/${string}` | `approvals/${string}` | `agent-profiles/${string}` | "ai-world/state" {
   return RESOURCE_SET.has(resource)
     || PRODUCT_ID.test(resource)
     || TASK_ID.test(resource)
     || resource === "approvals"
     || APPROVAL_ID.test(resource)
-    || APPROVAL_ACTION.test(resource);
+    || APPROVAL_ACTION.test(resource)
+    || PROFILE_ID.test(resource);
 }
 
 export function dashboardRequestUrl(baseUrl: string, resource: string): string {
